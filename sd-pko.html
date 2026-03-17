@@ -1,0 +1,869 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>6-Max Short Deck PKO — Rahul</title>
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+:root {
+  --bg: #0a0f0a;
+  --surface: #111a11;
+  --surface2: #182018;
+  --border: #1e2e1e;
+  --text: #e2f0e2;
+  --muted: #5a7a5a;
+  --accent: #4ade80;
+  --accent2: #f59e0b;
+  --red: #f87171;
+  --blue: #60a5fa;
+  --purple: #c084fc;
+}
+body { background: var(--bg); color: var(--text); font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; min-height: 100vh; }
+
+.nav { position: sticky; top: 0; z-index: 100; background: var(--bg); border-bottom: 1px solid var(--border); padding: 0 16px; display: flex; align-items: center; flex-wrap: wrap; }
+.nav-title { font-size: 11px; font-weight: 700; color: var(--accent); letter-spacing: 0.06em; text-transform: uppercase; padding: 13px 14px 13px 0; border-right: 1px solid var(--border); margin-right: 4px; white-space: nowrap; }
+.nav-btn { padding: 12px 13px; font-size: 12px; font-weight: 500; color: var(--muted); background: none; border: none; cursor: pointer; border-bottom: 2px solid transparent; transition: color .15s, border-color .15s; white-space: nowrap; }
+.nav-btn.active { color: var(--text); border-bottom-color: var(--accent); }
+.nav-btn:hover:not(.active) { color: var(--text); }
+
+.content { display: none; padding: 22px 16px 40px; max-width: 920px; margin: 0 auto; }
+.content.active { display: block; }
+
+.page-header { margin-bottom: 20px; }
+.page-title { font-size: 20px; font-weight: 700; margin-bottom: 4px; }
+.page-sub { font-size: 13px; color: var(--muted); line-height: 1.6; }
+.badge { display: inline-block; font-size: 10px; font-weight: 700; padding: 2px 8px; border-radius: 4px; text-transform: uppercase; letter-spacing: 0.06em; margin-left: 6px; vertical-align: middle; }
+.badge-sd  { background: #052e16; color: #4ade80; }
+.badge-pko { background: #1c1917; color: #f59e0b; }
+
+.info-box { border-radius: 8px; padding: 12px 14px; margin-bottom: 16px; font-size: 12px; line-height: 1.75; }
+.info-box.green  { background: #052e16; border: 1px solid #166534; color: #86efac; }
+.info-box.amber  { background: #1a1200; border: 1px solid #7c4a00; color: #fde68a; }
+.info-box.blue   { background: #0c1a3a; border: 1px solid #1e3a8a; color: #93c5fd; }
+.info-box.red    { background: #1a0505; border: 1px solid #7f1d1d; color: #fca5a5; }
+.info-box b { font-weight: 700; }
+
+.pos-tabs { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 16px; }
+.pos-btn { padding: 6px 14px; border-radius: 6px; border: 1px solid var(--border); background: var(--surface); color: var(--muted); font-size: 12px; font-weight: 600; cursor: pointer; transition: all .15s; }
+.pos-btn.active { background: var(--accent); border-color: var(--accent); color: #052e16; }
+.pos-btn:hover:not(.active) { border-color: var(--accent); color: var(--text); }
+
+.depth-row { display: flex; align-items: center; gap: 8px; margin-bottom: 16px; flex-wrap: wrap; }
+.depth-label { font-size: 12px; color: var(--muted); }
+.depth-btn { padding: 5px 12px; border-radius: 6px; border: 1px solid var(--border); background: var(--surface); color: var(--muted); font-size: 12px; cursor: pointer; transition: all .15s; }
+.depth-btn.active { background: var(--accent2); border-color: var(--accent2); color: #1a1200; font-weight: 700; }
+
+.range-panel { display: none; }
+.range-panel.active { display: block; }
+.range-grid { display: grid; grid-template-columns: auto 1fr; gap: 20px; align-items: start; }
+
+/* SHORT DECK MATRIX — 9x9 (6-A only) */
+.matrix-wrap { overflow-x: auto; }
+.matrix { border-collapse: collapse; }
+.matrix td { width: 38px; height: 38px; text-align: center; vertical-align: middle; border: 1px solid var(--bg); border-radius: 3px; cursor: default; user-select: none; font-size: 10.5px; font-weight: 700; }
+.r  { background: #1e3a8a; color: #93c5fd; }   /* open raise */
+.c  { background: #14532d; color: #86efac; }   /* call */
+.f  { background: #0f1a0f; color: #2d4a2d; }   /* fold */
+.m  { background: #7c4a00; color: #fde68a; }   /* mixed */
+.s  { background: #4a1d96; color: #ddd6fe; }   /* stack dependent */
+.bw { background: #064e3b; color: #6ee7b7; }   /* bounty widen */
+
+.legend { display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 14px; }
+.leg-item { display: flex; align-items: center; gap: 5px; font-size: 11px; color: var(--muted); }
+.leg-dot { width: 12px; height: 12px; border-radius: 2px; flex-shrink: 0; }
+
+.notes { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 14px 16px; }
+.notes-title { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; color: var(--accent); margin-bottom: 10px; }
+.note-item { font-size: 12px; color: var(--text); line-height: 1.65; padding: 5px 0; border-top: 1px solid var(--border); }
+.note-item:first-of-type { border-top: none; }
+.note-item b { color: var(--accent); font-weight: 600; }
+.note-item b.amber { color: var(--accent2); }
+.note-item b.red { color: var(--red); }
+.note-item b.blue { color: var(--blue); }
+
+.sec-title { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; color: var(--muted); margin: 22px 0 12px; padding-bottom: 6px; border-bottom: 1px solid var(--border); }
+
+.remind-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: 12px; margin-bottom: 20px; }
+.remind-card { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 14px 16px; }
+.remind-card-title { font-size: 12px; font-weight: 700; margin-bottom: 6px; }
+.remind-card-title.green  { color: var(--accent); }
+.remind-card-title.amber  { color: var(--accent2); }
+.remind-card-title.red    { color: var(--red); }
+.remind-card-title.blue   { color: var(--blue); }
+.remind-card p { font-size: 12px; color: var(--muted); line-height: 1.65; }
+.remind-card p b { color: var(--text); font-weight: 600; }
+
+.push-table { width: 100%; border-collapse: collapse; font-size: 12px; margin-bottom: 16px; }
+.push-table th { background: var(--surface2); color: var(--muted); font-weight: 600; padding: 8px 10px; text-align: left; border-bottom: 1px solid var(--border); font-size: 11px; text-transform: uppercase; letter-spacing: 0.05em; }
+.push-table td { padding: 8px 10px; border-bottom: 1px solid var(--border); color: var(--text); vertical-align: top; font-size: 12px; line-height: 1.65; }
+.push-table tr:last-child td { border-bottom: none; }
+.push-table td:first-child { color: var(--accent); font-weight: 700; white-space: nowrap; }
+.tag { display: inline-block; padding: 1px 7px; border-radius: 4px; font-size: 10px; font-weight: 700; margin-right: 3px; }
+.tag-g { background: #052e16; color: #4ade80; }
+.tag-a { background: #1a1200; color: #fde68a; }
+.tag-r { background: #1a0505; color: #f87171; }
+
+.equity-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 10px; margin-bottom: 16px; }
+.equity-card { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 12px 14px; }
+.equity-matchup { font-size: 12px; font-weight: 700; color: var(--accent); margin-bottom: 4px; }
+.equity-sd { font-size: 13px; font-weight: 700; color: var(--text); }
+.equity-vs { font-size: 11px; color: var(--muted); margin-top: 2px; }
+.equity-note { font-size: 11px; color: var(--accent2); margin-top: 3px; font-style: italic; }
+
+@media (max-width: 640px) {
+  .range-grid { grid-template-columns: 1fr; }
+  .matrix td { width: 30px; height: 30px; font-size: 9px; }
+  .nav-title { display: none; }
+  .nav-btn { padding: 11px 9px; font-size: 11px; }
+}
+
+/* ── VS RFI shared styles ── */
+.rfi-opener-tabs { display:flex; flex-wrap:wrap; gap:6px; margin-bottom:16px; }
+.rfi-opener-btn { padding:6px 14px; border-radius:6px; border:1px solid var(--border); background:var(--surface); color:var(--muted); font-size:12px; font-weight:600; cursor:pointer; transition:all .15s; }
+.rfi-opener-btn:hover:not(.active) { color:var(--text); }
+.rfi-panel { display:none; }
+.rfi-panel.active { display:block; }
+.rfi-grid { display:grid; grid-template-columns:1fr 1fr; gap:14px; margin-bottom:14px; }
+.rfi-card { background:var(--surface); border:1px solid var(--border); border-radius:10px; padding:13px 15px; }
+.rfi-card-title { font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:0.07em; margin-bottom:10px; }
+.rfi-card-title.call   { color:#6ee7b7; }
+.rfi-card-title.vbet   { color:#60a5fa; }
+.rfi-card-title.bluff  { color:#c084fc; }
+.rfi-card-title.fold   { color:#f87171; }
+.rfi-hand-list { font-size:11.5px; color:var(--text); line-height:1.8; }
+.rfi-hand-list span { display:inline-block; background:var(--surface2); border:1px solid var(--border); border-radius:4px; padding:1px 5px; margin:2px 2px; font-size:10.5px; font-weight:600; }
+.rfi-hand-list span.h  { color:#6ee7b7; border-color:#14532d; background:#052e16; }
+.rfi-hand-list span.v  { color:#93c5fd; border-color:#1e3a8a; background:#0c1a3a; }
+.rfi-hand-list span.b  { color:#ddd6fe; border-color:#4a1d96; background:#2e1065; }
+.rfi-hand-list span.f  { color:#f87171; border-color:#7f1d1d; background:#1a0505; }
+.rfi-pos-label { font-size:11px; color:var(--muted); font-style:italic; margin-bottom:6px; }
+.rfi-rule { font-size:12px; color:var(--text); line-height:1.7; padding:6px 0; border-top:1px solid var(--border); }
+.rfi-rule:first-child { border-top:none; }
+.rfi-rule b { font-weight:600; }
+@media(max-width:600px){ .rfi-grid { grid-template-columns:1fr; } }
+
+.rfi-opener-btn.active { background:#14532d; border-color:#14532d; color:#fff; }
+</style>
+</head>
+<body>
+
+<div class="nav">
+  <span class="nav-title">SD PKO 6-Max</span>
+  <button class="nav-btn active" onclick="switchPage('basics', this)">SD Basics</button>
+  <button class="nav-btn" onclick="switchPage('rfi', this)">RFI Ranges</button>
+  <button class="nav-btn" onclick="switchPage('defence', this)">3-Bet Defence</button>
+  <button class="nav-btn" onclick="switchPage('pushfold', this)">Push / Fold</button>
+  <button class="nav-btn" onclick="switchPage('bounty', this)">Bounty Calls</button>
+  <button class="nav-btn" onclick="switchPage('postflop', this)">Postflop Shifts</button>
+  <button class="nav-btn" onclick="switchPage('reminders', this)">Reminders</button>
+<button class="nav-btn" onclick="switchPage('vsrfi')">vs RFI</button>
+</div>
+
+<!-- ═══════════════════════════════════
+     PAGE 0 — SD BASICS
+═══════════════════════════════════ -->
+<div id="page-basics" class="content active">
+  <div class="page-header">
+    <div class="page-title">Short Deck Fundamentals <span class="badge badge-sd">Triton Rules</span><span class="badge badge-pko">PKO</span></div>
+    <div class="page-sub">Before anything else — the rules that make short deck genuinely different from regular hold'em.</div>
+  </div>
+
+  <div class="info-box red">
+    <b>Triton hand rankings (flush beats full house):</b><br>
+    Royal Flush &gt; Straight Flush &gt; <b>Four of a Kind &gt; Flush &gt; Full House</b> &gt; Straight &gt; Three of a Kind &gt; Two Pair &gt; One Pair &gt; High Card.<br>
+    This is critical — full houses are relatively common in short deck. Flopping a full house does NOT mean you're safe.
+  </div>
+
+  <div class="sec-title">The deck — what's removed</div>
+  <div class="info-box green">
+    <b>Cards 2–5 are removed.</b> The deck runs 6–A across all four suits = 36 cards total. Aces still play high AND low (A-6-7-8-9 is the lowest straight — the wheel). No 2–5 means no 5-high straights, no wheel draws the traditional way.
+  </div>
+
+  <div class="sec-title">Ante structure you're playing</div>
+  <div class="info-box amber">
+    <b>Button posts ante + blind. All other 5 players post an ante.</b> This means there are 6 antes in the pot before a card is dealt. The pot is always worth fighting for — this structure rewards aggression and position even more than regular hold'em.
+  </div>
+
+  <div class="sec-title">How equity changes — the most important concepts</div>
+  <div class="remind-grid">
+    <div class="remind-card">
+      <div class="remind-card-title green">Pairs are stronger preflop</div>
+      <p>With 36 cards, pairs connect with the board far more often. <b>Set frequency is dramatically higher</b> — roughly 1 in 5.5 vs 1 in 8.5 in regular hold'em. Small pairs gain value.</p>
+    </div>
+    <div class="remind-card">
+      <div class="remind-card-title green">Suited hands are weaker preflop</div>
+      <p>Only 9 cards per suit remain. <b>Flush draws complete less frequently</b> and have fewer outs. A flopped flush draw in SD is not the powerhouse it is in regular hold'em.</p>
+    </div>
+    <div class="remind-card">
+      <div class="remind-card-title amber">Straight draws are more powerful</div>
+      <p>Cards are more bunched — <b>connected hands make straights more often.</b> Hands like J-9, T-8, 9-7 gain significant value. Open-ended straight draws often have 8 clean outs.</p>
+    </div>
+    <div class="remind-card">
+      <div class="remind-card-title amber">Overcards are weaker</div>
+      <p>With fewer cards, <b>A-K vs a pair is closer to a coin flip</b> than in regular hold'em (roughly 45–55% vs pair). Don't massively overvalue unpaired big cards.</p>
+    </div>
+    <div class="remind-card">
+      <div class="remind-card-title red">Full houses are more common</div>
+      <p>Because paired boards happen more often, <b>full houses are NOT the nuts they feel like.</b> Under Triton rules a flush beats them — adjust your stack-off threshold.</p>
+    </div>
+    <div class="remind-card">
+      <div class="remind-card-title blue">Ace plays both ways</div>
+      <p>A-6-7-8-9 is the nut low straight (the "wheel"). <b>Ace-low straights are possible.</b> A6 suited picks up both a nut flush draw AND a wheel draw on certain boards — genuinely premium.</p>
+    </div>
+  </div>
+
+  <div class="sec-title">Key equity matchups — short deck vs regular hold'em</div>
+  <div class="equity-grid">
+    <div class="equity-card">
+      <div class="equity-matchup">AA vs KK</div>
+      <div class="equity-sd">SD: ~82% / 18%</div>
+      <div class="equity-vs">Regular: ~80% / 20%</div>
+      <div class="equity-note">Similar — AA still dominant</div>
+    </div>
+    <div class="equity-card">
+      <div class="equity-matchup">AK vs QQ</div>
+      <div class="equity-sd">SD: ~46% / 54%</div>
+      <div class="equity-vs">Regular: ~43% / 57%</div>
+      <div class="equity-note">AK closer to a flip in SD</div>
+    </div>
+    <div class="equity-card">
+      <div class="equity-matchup">JTs vs 99</div>
+      <div class="equity-sd">SD: ~52% / 48%</div>
+      <div class="equity-vs">Regular: ~46% / 54%</div>
+      <div class="equity-note">Connectors beat small pairs in SD!</div>
+    </div>
+    <div class="equity-card">
+      <div class="equity-matchup">AKs vs 66</div>
+      <div class="equity-sd">SD: ~50% / 50%</div>
+      <div class="equity-vs">Regular: ~46% / 54%</div>
+      <div class="equity-note">True coin flip in short deck</div>
+    </div>
+    <div class="equity-card">
+      <div class="equity-matchup">T9s vs KK</div>
+      <div class="equity-sd">SD: ~38% / 62%</div>
+      <div class="equity-vs">Regular: ~28% / 72%</div>
+      <div class="equity-note">Suited connectors far stronger vs pairs</div>
+    </div>
+    <div class="equity-card">
+      <div class="equity-matchup">AK vs 77</div>
+      <div class="equity-sd">SD: ~47% / 53%</div>
+      <div class="equity-vs">Regular: ~43% / 57%</div>
+      <div class="equity-note">Medium pairs only slight edge in SD</div>
+    </div>
+  </div>
+
+  <div class="info-box blue">
+    <b>The single most important short deck intuition shift:</b> In regular hold'em, a pair beats overcards cleanly. In short deck, overcards are nearly coin flips with pairs, and suited connectors actually BEAT small pairs as slight favourites. This completely changes how you should 4-bet, call shoves, and think about getting it in preflop.
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════
+     PAGE 1 — RFI RANGES
+═══════════════════════════════════ -->
+<div id="page-rfi" class="content">
+  <div class="page-header">
+    <div class="page-title">RFI Ranges <span class="badge badge-sd">Short Deck</span><span class="badge badge-pko">6-Max PKO</span></div>
+    <div class="page-sub">Short deck 6-max uses a 9×9 matrix (6 through A). Ranges are wider than regular hold'em — suited connectors and pairs gain significant value. BTN posts ante+blind so action often starts from UTG.</div>
+  </div>
+
+  <div class="info-box amber">
+    <b>Ante structure impact:</b> With 6 antes already in the pot, stealing is extremely profitable. Tight players bleed chips fast. Open wider than regular hold'em from every position — the pot odds justify it and the ante structure punishes passivity.
+  </div>
+
+  <div class="legend">
+    <div class="leg-item"><div class="leg-dot" style="background:#1e3a8a"></div> Open raise</div>
+    <div class="leg-item"><div class="leg-dot" style="background:#7c4a00"></div> Mixed / exploitative</div>
+    <div class="leg-item"><div class="leg-dot" style="background:#4a1d96"></div> Stack / bounty dependent</div>
+    <div class="leg-item"><div class="leg-dot" style="background:#0f1a0f;border:1px solid #2d4a2d"></div> Fold</div>
+  </div>
+
+  <div class="depth-row">
+    <span class="depth-label">Stack depth:</span>
+    <button class="depth-btn active" onclick="setDepth('deep', this)">Deep (30BB+)</button>
+    <button class="depth-btn" onclick="setDepth('mid', this)">Mid (15–30BB)</button>
+    <button class="depth-btn" onclick="setDepth('short', this)">Short (&lt;15BB)</button>
+  </div>
+
+  <!-- DEEP RANGES -->
+  <div id="depth-deep">
+    <div class="pos-tabs" id="rfi-deep-tabs">
+      <button class="pos-btn active" onclick="switchPos('rfi-deep','utg', this)">UTG</button>
+      <button class="pos-btn" onclick="switchPos('rfi-deep','hj', this)">HJ</button>
+      <button class="pos-btn" onclick="switchPos('rfi-deep','co', this)">CO</button>
+      <button class="pos-btn" onclick="switchPos('rfi-deep','btn', this)">BTN</button>
+      <button class="pos-btn" onclick="switchPos('rfi-deep','sb', this)">SB</button>
+    </div>
+
+    <!-- UTG deep — 9x9 matrix: rows=A,K,Q,J,T,9,8,7,6 cols same -->
+    <div id="rfi-deep-utg" class="range-panel active">
+      <div class="range-grid">
+        <div class="matrix-wrap"><table class="matrix">
+          <!--       As     Ks     Qs     Js     Ts     9s     8s     7s     6s  -->
+          <tr><td class="r">AA</td><td class="r">AKs</td><td class="r">AQs</td><td class="r">AJs</td><td class="r">ATs</td><td class="r">A9s</td><td class="r">A8s</td><td class="m">A7s</td><td class="m">A6s</td></tr>
+          <tr><td class="r">AKo</td><td class="r">KK</td><td class="r">KQs</td><td class="r">KJs</td><td class="r">KTs</td><td class="r">K9s</td><td class="m">K8s</td><td class="f">K7s</td><td class="f">K6s</td></tr>
+          <tr><td class="r">AQo</td><td class="r">KQo</td><td class="r">QQ</td><td class="r">QJs</td><td class="r">QTs</td><td class="r">Q9s</td><td class="m">Q8s</td><td class="f">Q7s</td><td class="f">Q6s</td></tr>
+          <tr><td class="r">AJo</td><td class="r">KJo</td><td class="r">QJo</td><td class="r">JJ</td><td class="r">JTs</td><td class="r">J9s</td><td class="r">J8s</td><td class="m">J7s</td><td class="f">J6s</td></tr>
+          <tr><td class="r">ATo</td><td class="r">KTo</td><td class="r">QTo</td><td class="r">JTo</td><td class="r">TT</td><td class="r">T9s</td><td class="r">T8s</td><td class="r">T7s</td><td class="m">T6s</td></tr>
+          <tr><td class="r">A9o</td><td class="m">K9o</td><td class="m">Q9o</td><td class="r">J9o</td><td class="r">T9o</td><td class="r">99</td><td class="r">98s</td><td class="r">97s</td><td class="r">96s</td></tr>
+          <tr><td class="m">A8o</td><td class="f">K8o</td><td class="f">Q8o</td><td class="m">J8o</td><td class="r">T8o</td><td class="r">98o</td><td class="r">88</td><td class="r">87s</td><td class="r">86s</td></tr>
+          <tr><td class="f">A7o</td><td class="f">K7o</td><td class="f">Q7o</td><td class="f">J7o</td><td class="m">T7o</td><td class="r">97o</td><td class="r">87o</td><td class="r">77</td><td class="r">76s</td></tr>
+          <tr><td class="f">A6o</td><td class="f">K6o</td><td class="f">Q6o</td><td class="f">J6o</td><td class="f">T6o</td><td class="m">96o</td><td class="m">86o</td><td class="r">76o</td><td class="r">66</td></tr>
+        </table></div>
+        <div class="notes">
+          <div class="notes-title">UTG 6-max SD (~32% range, 30BB+)</div>
+          <div class="note-item"><b>Much wider than regular hold'em UTG.</b> SD UTG ≈ CO in regular 6-max.</div>
+          <div class="note-item"><b>Suited connectors open from UTG:</b> T8s, T7s, 98s, 97s, 96s, 87s, 86s, 76s — all standard opens. These are too strong in SD to fold from any position.</div>
+          <div class="note-item"><b>All pairs open:</b> 66–AA. Small pairs have set equity of ~18% — too valuable to fold.</div>
+          <div class="note-item"><b>Offsuit broadway:</b> All open. AKo–A9o, KQo–KJo, QJo, JTo, T9o — position with high cards is still powerful.</div>
+          <div class="note-item"><b>PKO note:</b> If a large bounty short stack is in the blinds, widen the mixed hands to opens.</div>
+          <div class="note-item"><b>Sizing:</b> 2.5–3x. The antes make the pot worth taking down.</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- HJ deep -->
+    <div id="rfi-deep-hj" class="range-panel">
+      <div class="range-grid">
+        <div class="matrix-wrap"><table class="matrix">
+          <tr><td class="r">AA</td><td class="r">AKs</td><td class="r">AQs</td><td class="r">AJs</td><td class="r">ATs</td><td class="r">A9s</td><td class="r">A8s</td><td class="r">A7s</td><td class="m">A6s</td></tr>
+          <tr><td class="r">AKo</td><td class="r">KK</td><td class="r">KQs</td><td class="r">KJs</td><td class="r">KTs</td><td class="r">K9s</td><td class="r">K8s</td><td class="m">K7s</td><td class="f">K6s</td></tr>
+          <tr><td class="r">AQo</td><td class="r">KQo</td><td class="r">QQ</td><td class="r">QJs</td><td class="r">QTs</td><td class="r">Q9s</td><td class="r">Q8s</td><td class="m">Q7s</td><td class="f">Q6s</td></tr>
+          <tr><td class="r">AJo</td><td class="r">KJo</td><td class="r">QJo</td><td class="r">JJ</td><td class="r">JTs</td><td class="r">J9s</td><td class="r">J8s</td><td class="r">J7s</td><td class="m">J6s</td></tr>
+          <tr><td class="r">ATo</td><td class="r">KTo</td><td class="r">QTo</td><td class="r">JTo</td><td class="r">TT</td><td class="r">T9s</td><td class="r">T8s</td><td class="r">T7s</td><td class="r">T6s</td></tr>
+          <tr><td class="r">A9o</td><td class="r">K9o</td><td class="r">Q9o</td><td class="r">J9o</td><td class="r">T9o</td><td class="r">99</td><td class="r">98s</td><td class="r">97s</td><td class="r">96s</td></tr>
+          <tr><td class="r">A8o</td><td class="m">K8o</td><td class="m">Q8o</td><td class="r">J8o</td><td class="r">T8o</td><td class="r">98o</td><td class="r">88</td><td class="r">87s</td><td class="r">86s</td></tr>
+          <tr><td class="m">A7o</td><td class="f">K7o</td><td class="f">Q7o</td><td class="m">J7o</td><td class="r">T7o</td><td class="r">97o</td><td class="r">87o</td><td class="r">77</td><td class="r">76s</td></tr>
+          <tr><td class="f">A6o</td><td class="f">K6o</td><td class="f">Q6o</td><td class="f">J6o</td><td class="m">T6o</td><td class="r">96o</td><td class="r">86o</td><td class="r">76o</td><td class="r">66</td></tr>
+        </table></div>
+        <div class="notes">
+          <div class="notes-title">HJ 6-max SD (~38% range, 30BB+)</div>
+          <div class="note-item"><b>Opens up significantly vs UTG.</b> Add T6s, J7s, K8s, Q8s, A7s and all double-gappers with straight potential.</div>
+          <div class="note-item"><b>Key adds:</b> T6s (has wheel and straight draws), J7o mixed, T7o, 96o opens (straight-heavy), A7o mixed</div>
+          <div class="note-item"><b>Double gappers matter in SD:</b> T8o, J9o, Q9o — the removed low cards make these hands connect more frequently.</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- CO deep -->
+    <div id="rfi-deep-co" class="range-panel">
+      <div class="range-grid">
+        <div class="matrix-wrap"><table class="matrix">
+          <tr><td class="r">AA</td><td class="r">AKs</td><td class="r">AQs</td><td class="r">AJs</td><td class="r">ATs</td><td class="r">A9s</td><td class="r">A8s</td><td class="r">A7s</td><td class="r">A6s</td></tr>
+          <tr><td class="r">AKo</td><td class="r">KK</td><td class="r">KQs</td><td class="r">KJs</td><td class="r">KTs</td><td class="r">K9s</td><td class="r">K8s</td><td class="r">K7s</td><td class="m">K6s</td></tr>
+          <tr><td class="r">AQo</td><td class="r">KQo</td><td class="r">QQ</td><td class="r">QJs</td><td class="r">QTs</td><td class="r">Q9s</td><td class="r">Q8s</td><td class="r">Q7s</td><td class="m">Q6s</td></tr>
+          <tr><td class="r">AJo</td><td class="r">KJo</td><td class="r">QJo</td><td class="r">JJ</td><td class="r">JTs</td><td class="r">J9s</td><td class="r">J8s</td><td class="r">J7s</td><td class="r">J6s</td></tr>
+          <tr><td class="r">ATo</td><td class="r">KTo</td><td class="r">QTo</td><td class="r">JTo</td><td class="r">TT</td><td class="r">T9s</td><td class="r">T8s</td><td class="r">T7s</td><td class="r">T6s</td></tr>
+          <tr><td class="r">A9o</td><td class="r">K9o</td><td class="r">Q9o</td><td class="r">J9o</td><td class="r">T9o</td><td class="r">99</td><td class="r">98s</td><td class="r">97s</td><td class="r">96s</td></tr>
+          <tr><td class="r">A8o</td><td class="r">K8o</td><td class="r">Q8o</td><td class="r">J8o</td><td class="r">T8o</td><td class="r">98o</td><td class="r">88</td><td class="r">87s</td><td class="r">86s</td></tr>
+          <tr><td class="r">A7o</td><td class="m">K7o</td><td class="m">Q7o</td><td class="r">J7o</td><td class="r">T7o</td><td class="r">97o</td><td class="r">87o</td><td class="r">77</td><td class="r">76s</td></tr>
+          <tr><td class="m">A6o</td><td class="f">K6o</td><td class="f">Q6o</td><td class="m">J6o</td><td class="r">T6o</td><td class="r">96o</td><td class="r">86o</td><td class="r">76o</td><td class="r">66</td></tr>
+        </table></div>
+        <div class="notes">
+          <div class="notes-title">CO 6-max SD (~46% range, 30BB+)</div>
+          <div class="note-item"><b>Very wide range.</b> Almost every connected hand opens from CO. Short deck rewards aggression from late position heavily.</div>
+          <div class="note-item"><b>All suited hands open.</b> Even K6s, Q6s — the flush potential and straight combinations justify it.</div>
+          <div class="note-item"><b>Sizing:</b> 2.5x. You want to build pots in position with your wide range.</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- BTN deep -->
+    <div id="rfi-deep-btn" class="range-panel">
+      <div class="range-grid">
+        <div class="matrix-wrap"><table class="matrix">
+          <tr><td class="r">AA</td><td class="r">AKs</td><td class="r">AQs</td><td class="r">AJs</td><td class="r">ATs</td><td class="r">A9s</td><td class="r">A8s</td><td class="r">A7s</td><td class="r">A6s</td></tr>
+          <tr><td class="r">AKo</td><td class="r">KK</td><td class="r">KQs</td><td class="r">KJs</td><td class="r">KTs</td><td class="r">K9s</td><td class="r">K8s</td><td class="r">K7s</td><td class="r">K6s</td></tr>
+          <tr><td class="r">AQo</td><td class="r">KQo</td><td class="r">QQ</td><td class="r">QJs</td><td class="r">QTs</td><td class="r">Q9s</td><td class="r">Q8s</td><td class="r">Q7s</td><td class="r">Q6s</td></tr>
+          <tr><td class="r">AJo</td><td class="r">KJo</td><td class="r">QJo</td><td class="r">JJ</td><td class="r">JTs</td><td class="r">J9s</td><td class="r">J8s</td><td class="r">J7s</td><td class="r">J6s</td></tr>
+          <tr><td class="r">ATo</td><td class="r">KTo</td><td class="r">QTo</td><td class="r">JTo</td><td class="r">TT</td><td class="r">T9s</td><td class="r">T8s</td><td class="r">T7s</td><td class="r">T6s</td></tr>
+          <tr><td class="r">A9o</td><td class="r">K9o</td><td class="r">Q9o</td><td class="r">J9o</td><td class="r">T9o</td><td class="r">99</td><td class="r">98s</td><td class="r">97s</td><td class="r">96s</td></tr>
+          <tr><td class="r">A8o</td><td class="r">K8o</td><td class="r">Q8o</td><td class="r">J8o</td><td class="r">T8o</td><td class="r">98o</td><td class="r">88</td><td class="r">87s</td><td class="r">86s</td></tr>
+          <tr><td class="r">A7o</td><td class="r">K7o</td><td class="r">Q7o</td><td class="r">J7o</td><td class="r">T7o</td><td class="r">97o</td><td class="r">87o</td><td class="r">77</td><td class="r">76s</td></tr>
+          <tr><td class="r">A6o</td><td class="r">K6o</td><td class="r">Q6o</td><td class="r">J6o</td><td class="r">T6o</td><td class="r">96o</td><td class="r">86o</td><td class="r">76o</td><td class="r">66</td></tr>
+        </table></div>
+        <div class="notes">
+          <div class="notes-title">BTN 6-max SD (~65%+ range, 30BB+)</div>
+          <div class="note-item"><b>Open essentially everything.</b> In SD with antes, the BTN is a licence to steal on almost every hand.</div>
+          <div class="note-item"><b>The only folds:</b> The weakest offsuit unconnected hands like K6o, Q6o, J6o — and even these are borderline opens vs weak blinds.</div>
+          <div class="note-item"><b>Remember:</b> You post the ante + blind as BTN — you're already invested. Stealing SB and BB (who only paid antes) is extremely profitable.</div>
+          <div class="note-item"><b>Sizing:</b> 2–2.5x. Keep it small — you'll open so wide that a smaller size preserves stack when you miss.</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- SB deep -->
+    <div id="rfi-deep-sb" class="range-panel">
+      <div class="notes" style="margin-bottom:14px">
+        <div class="notes-title">SB 6-max SD — vs BB only (30BB+)</div>
+        <div class="note-item"><b>Open ~55%+:</b> All pairs, all Ax suited, all suited connectors, all broadway hands, K8o+, Q9o+, J9o+, T8o+, 97o+, 87o, 76o</div>
+        <div class="note-item"><b>Never limp SB in SD.</b> The ante structure makes limping even weaker than regular hold'em — pot is already worth stealing.</div>
+        <div class="note-item"><b>Sizing:</b> 3x vs BB. They paid only an ante — make them pay to defend.</div>
+        <div class="note-item"><b>PKO note:</b> If BB has a large bounty, open even wider — you want them involved in pots where you're attacking their stack.</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- MID STACK -->
+  <div id="depth-mid" style="display:none">
+    <div class="info-box amber"><b>15–30BB mid-stack in SD:</b> Similar to regular hold'em mid-stack — shift toward raise/fold. Speculative implied-odds plays shrink in value. Suited connectors still open (their raw equity is higher in SD), but abandon the weakest offsuit hands. All pairs still open — set equity is too good to fold at any depth. Sizing: min-raise to preserve stack.</div>
+    <div class="notes">
+      <div class="notes-title">Mid-stack adjustments by position (15–30BB)</div>
+      <div class="note-item"><b>UTG/HJ:</b> Core range — AA–66, all broadway suited, all suited connectors T6s+, offsuit broadways AKo–A9o, KQo–KJo, QJo, JTo, T9o, 98o</div>
+      <div class="note-item"><b>CO:</b> Widen — add A6s, K6s–K7s, Q6s–Q7s, offsuit connectors 87o–76o, all pairs</div>
+      <div class="note-item"><b>BTN/SB:</b> Open ~50%. Everything with any real equity. Fold only the weakest unconnected offsuit trash.</div>
+      <div class="note-item"><b>Key shift:</b> At 20BB your open commits ~10–15% of stack. Have a clear plan for facing a 3-bet — call/fold/4-bet-shove. No "I'll see a flop at 20BB."</div>
+    </div>
+  </div>
+
+  <!-- SHORT STACK -->
+  <div id="depth-short" style="display:none">
+    <div class="info-box red"><b>Under 15BB in SD — push/fold territory.</b> Same principle as regular hold'em — min-raises are exploitable. See Push/Fold tab for full shove ranges specific to short deck.</div>
+    <div class="notes">
+      <div class="notes-title">Short-stack overview (&lt;15BB)</div>
+      <div class="note-item"><b>Open-shove or fold.</b> No min-raises below 15BB in SD.</div>
+      <div class="note-item"><b>Shove wider than regular hold'em</b> because suited connectors and pairs have higher raw equity. T9o is a legitimate shove hand in SD.</div>
+      <div class="note-item"><b>Calling shoves:</b> Widen vs regular hold'em. Any pair, any two broadway, Ax, strong Kx, strong suited connectors — the equity gaps are smaller in SD.</div>
+      <div class="note-item"><b>See Push/Fold tab</b> for full position-specific shove ranges.</div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════
+     PAGE 2 — 3-BET DEFENCE
+═══════════════════════════════════ -->
+<div id="page-defence" class="content">
+  <div class="page-header">
+    <div class="page-title">3-Bet Defence <span class="badge badge-sd">Short Deck</span><span class="badge badge-pko">PKO</span></div>
+    <div class="page-sub">Short deck 3-bet spots are dramatically different. Suited connectors defend well, overcards run close to pairs, and the PKO bounty overlay widens call ranges further.</div>
+  </div>
+
+  <div class="info-box green">
+    <b>Core SD 3-bet principle:</b> Because suited connectors and pairs are closer in equity in SD, your 4-bet range becomes more polarised — AA/KK/QQ clear 4-bets, suited connectors often better as calls (they realise equity well postflop). Avoid 4-bet bluffing with hands that play well vs a call — that's a mistake unique to SD.
+  </div>
+
+  <div class="pos-tabs" id="def-tabs">
+    <button class="pos-btn active" onclick="switchPos('def','utg', this)">UTG/HJ open</button>
+    <button class="pos-btn" onclick="switchPos('def','co', this)">CO open</button>
+    <button class="pos-btn" onclick="switchPos('def','btn', this)">BTN open</button>
+    <button class="pos-btn" onclick="switchPos('def','sb', this)">SB open</button>
+  </div>
+
+  <div id="def-utg" class="range-panel active">
+    <div class="legend">
+      <div class="leg-item"><div class="leg-dot" style="background:#1e3a8a"></div> 4-bet value</div>
+      <div class="leg-item"><div class="leg-dot" style="background:#4a1d96"></div> 4-bet bluff (rare in SD)</div>
+      <div class="leg-item"><div class="leg-dot" style="background:#14532d"></div> Call — realise equity postflop</div>
+      <div class="leg-item"><div class="leg-dot" style="background:#064e3b"></div> Call — bounty widens</div>
+      <div class="leg-item"><div class="leg-dot" style="background:#0f1a0f;border:1px solid #2d4a2d"></div> Fold</div>
+    </div>
+    <div class="range-grid">
+      <div class="matrix-wrap"><table class="matrix">
+        <tr><td class="r">AA</td><td class="r">AKs</td><td class="r">AQs</td><td class="c">AJs</td><td class="c">ATs</td><td class="c">A9s</td><td class="f">A8s</td><td class="f">A7s</td><td class="f">A6s</td></tr>
+        <tr><td class="r">AKo</td><td class="r">KK</td><td class="r">KQs</td><td class="c">KJs</td><td class="c">KTs</td><td class="f">K9s</td><td class="f">K8s</td><td class="f">K7s</td><td class="f">K6s</td></tr>
+        <tr><td class="r">AQo</td><td class="r">KQo</td><td class="r">QQ</td><td class="c">QJs</td><td class="c">QTs</td><td class="f">Q9s</td><td class="f">Q8s</td><td class="f">Q7s</td><td class="f">Q6s</td></tr>
+        <tr><td class="c">AJo</td><td class="c">KJo</td><td class="c">QJo</td><td class="r">JJ</td><td class="c">JTs</td><td class="c">J9s</td><td class="c">J8s</td><td class="f">J7s</td><td class="f">J6s</td></tr>
+        <tr><td class="c">ATo</td><td class="c">KTo</td><td class="f">QTo</td><td class="f">JTo</td><td class="r">TT</td><td class="c">T9s</td><td class="c">T8s</td><td class="c">T7s</td><td class="f">T6s</td></tr>
+        <tr><td class="f">A9o</td><td class="f">K9o</td><td class="f">Q9o</td><td class="f">J9o</td><td class="f">T9o</td><td class="r">99</td><td class="c">98s</td><td class="c">97s</td><td class="c">96s</td></tr>
+        <tr><td class="f">A8o</td><td class="f">K8o</td><td class="f">Q8o</td><td class="f">J8o</td><td class="f">T8o</td><td class="f">98o</td><td class="r">88</td><td class="c">87s</td><td class="c">86s</td></tr>
+        <tr><td class="f">A7o</td><td class="f">K7o</td><td class="f">Q7o</td><td class="f">J7o</td><td class="f">T7o</td><td class="f">97o</td><td class="f">87o</td><td class="r">77</td><td class="c">76s</td></tr>
+        <tr><td class="f">A6o</td><td class="f">K6o</td><td class="f">Q6o</td><td class="f">J6o</td><td class="f">T6o</td><td class="f">96o</td><td class="f">86o</td><td class="f">76o</td><td class="m">66</td></tr>
+      </table></div>
+      <div class="notes">
+        <div class="notes-title">UTG/HJ open vs 3-bet — SD PKO</div>
+        <div class="note-item"><b>4-bet value:</b> AA, KK, QQ, JJ, TT, AKs/o, AQs/o — these are genuinely strong in SD</div>
+        <div class="note-item"><b>4-bet bluffs (very rare):</b> Barely use them in SD. Suited connectors play better as calls — they realise equity well postflop and lose value when folded out by a 4-bet.</div>
+        <div class="note-item"><b>Call range — wide in SD:</b> 99–66, AJs–A9s, KQs–KTs, QJs–QTs, JTs–J8s, T9s–T7s, 98s–96s, 87s–86s, 76s, AJo–ATo, KJo–KTo, QJo</div>
+        <div class="note-item"><b>SD key insight:</b> Suited connectors CALL 3-bets in SD where they'd fold in regular hold'em. T8s vs a 3-bet is a call — it has nearly 40% equity vs many 3-bet ranges.</div>
+        <div class="note-item"><b>PKO bounty:</b> If the 3-bettor has a large bounty, call wider with pairs (66, 77) — set equity + bounty overlay = profitable call.</div>
+      </div>
+    </div>
+  </div>
+
+  <div id="def-co" class="range-panel">
+    <div class="notes" style="margin-bottom:12px">
+      <div class="notes-title">CO open vs 3-bet</div>
+      <div class="note-item"><b>vs BTN 3-bet (OOP):</b> 4-bet AA/KK/QQ/JJ/TT/AKs/AKo. Call 99–77, AQs–AJs, KQs–KJs, JTs–T8s, 98s–87s. Fold weak offsuit hands OOP.</div>
+      <div class="note-item"><b>vs SB/BB 3-bet (IP):</b> Wide calls. Add 66, ATs–A8s, QTs–Q9s, J9s–J8s, T7s–T6s, 96s–86s–76s. 4-bet value only — no bluff 4-bets.</div>
+      <div class="note-item"><b>SD unique spot:</b> Being IP vs a 3-bet in SD is extremely valuable because your implied odds with sets and straights are massive. Don't fold drawing hands IP when the price is right.</div>
+      <div class="note-item"><b>PKO note:</b> If 3-bettor has a big bounty and you're IP, widen calls significantly — you can stack them with a set or a made straight and collect the bounty.</div>
+    </div>
+  </div>
+
+  <div id="def-btn" class="range-panel">
+    <div class="notes" style="margin-bottom:12px">
+      <div class="notes-title">BTN open vs 3-bet (SB or BB)</div>
+      <div class="note-item"><b>Always IP.</b> Best spot in the game to defend wide in SD — implied odds, position, and bounty equity all work in your favour.</div>
+      <div class="note-item"><b>4-bet value:</b> AA, KK, QQ, JJ, TT, AKs/o. Shove if &lt;25BB effective.</div>
+      <div class="note-item"><b>Call very wide:</b> 99–66, all suited hands with connectivity, AQs–A6s, KQs–K8s, QJs–Q7s, JTs–J6s, T9s–T6s, 98s–96s, 87s–86s, 76s, AJo–A9o, KQo–KTo, QJo–Q9o, JTo–J9o, T9o–T8o, 98o</div>
+      <div class="note-item"><b>SD principle:</b> Almost every hand that's connected or suited has real equity in SD. Folding too much vs 3-bets IP in SD is a significant leak.</div>
+      <div class="note-item"><b>PKO note:</b> You posted ante+blind — your bounty is on the line too. But being IP means you can navigate postflop well. Call wide, play well.</div>
+    </div>
+  </div>
+
+  <div id="def-sb" class="range-panel">
+    <div class="notes" style="margin-bottom:12px">
+      <div class="notes-title">SB open vs BB 3-bet — OOP</div>
+      <div class="note-item"><b>Toughest spot.</b> OOP for the entire hand. Tighten defence range significantly.</div>
+      <div class="note-item"><b>4-bet value:</b> AA, KK, QQ, JJ, AKs/o. Polarise hard — these are shoves/4-bets at most SD stack depths.</div>
+      <div class="note-item"><b>Call:</b> TT, 99, AQs, AJs, KQs, JTs, T9s. That's roughly it. SD doesn't change the OOP problem — being out of position in SD is still brutal.</div>
+      <div class="note-item"><b>Fold:</b> Even strong-looking hands like KQo, ATo, 88 — they're difficult to play well OOP in SD where boards run out fast and stack pressure is constant.</div>
+      <div class="note-item"><b>PKO note:</b> If BB has a massive bounty, you can defend TT and 99 more liberally — but don't let bounty hunting make you call off OOP with hands you can't play well.</div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════
+     PAGE 3 — PUSH/FOLD
+═══════════════════════════════════ -->
+<div id="page-pushfold" class="content">
+  <div class="page-header">
+    <div class="page-title">Push / Fold <span class="badge badge-sd">Short Deck</span><span class="badge badge-pko">PKO</span></div>
+    <div class="page-sub">SD push/fold ranges are wider than regular hold'em. Suited connectors and pairs gain value; pure overcards lose some. The bounty overlay widens calling ranges further.</div>
+  </div>
+
+  <div class="info-box green">
+    <b>Key SD push/fold difference:</b> In regular hold'em you'd hesitate to shove T9o at 12BB from CO. In short deck it's a standard shove — T9 has massive straight equity and nearly 45% vs many calling ranges. Connected hands shove earlier and wider in SD than intuition tells you.
+  </div>
+
+  <div class="sec-title">Open-shove ranges by position and stack depth</div>
+  <table class="push-table">
+    <thead><tr><th>Stack</th><th>UTG</th><th>HJ</th><th>CO</th><th>BTN</th><th>SB (vs BB)</th></tr></thead>
+    <tbody>
+      <tr>
+        <td>13–15BB</td>
+        <td>AA–77, AKo–ATo, KQo–KJo, all suited broadway, all suited connectors T6s+, 98s–76s</td>
+        <td>+ 66, A9s–A8s, K9s, Q9s, J9s, T8o, 97o</td>
+        <td>+ all Ax suited, K8s, Q8s, J8s, T7s–86s, 87o, AJo+, KQo</td>
+        <td>~75%+ — all connected hands, all pairs, all broadway, most suited hands</td>
+        <td>~70%+ — near everything. You've already paid ante.</td>
+      </tr>
+      <tr>
+        <td>10–12BB</td>
+        <td>AA–88, AKo–AJo, all suited broadway, T9s–76s, 98s</td>
+        <td>+ 77, 66, A9s–A8s, K9s, QTs, T8s–86s</td>
+        <td>+ all Ax suited, all pairs, K8s, Q9s–Q8s, J9s, T7s, 97s–87s, A9o, KQo</td>
+        <td>80%+ — nearly any two. Even unconnected offsuit trash has enough equity in SD.</td>
+        <td>80%+ — same. Ante structure means folding is almost always wrong here.</td>
+      </tr>
+      <tr>
+        <td>7–9BB</td>
+        <td>AA–99, AKo–AQo, AKs–ATs, KQs, JTs, T9s</td>
+        <td>+ 88, 77, A9s–A8s, KJs–KTs, QJs, 98s–87s</td>
+        <td>+ 66, all Ax suited, K9s–K8s, Q9s, T8s–76s, AJo+, KQo</td>
+        <td>Any two. Genuine any two — implied equity of SD means even trash has ~35%.</td>
+        <td>Any two — same reasoning as BTN.</td>
+      </tr>
+      <tr>
+        <td>4–6BB</td>
+        <td>AA–77, AKo–ATo, suited broadway, suited connectors T6s+</td>
+        <td>+ 66, A9s+, K9s+, QJs, T9s–87s</td>
+        <td>+ all pairs, all Ax, all broadway suited, any two connected suited</td>
+        <td>Any two. Literally. EV of waiting is deeply negative with antes eating stack.</td>
+        <td>Any two. Same.</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <div class="sec-title">Calling a shove — SD specific adjustments</div>
+  <table class="push-table">
+    <thead><tr><th>Shove stack (eff.)</th><th>SD calling range</th><th>Key SD note</th></tr></thead>
+    <tbody>
+      <tr>
+        <td>13–15BB</td>
+        <td>AA–TT, AKo/s, AQo/s, KQs, JTs, T9s (vs wide ranges)</td>
+        <td>In SD you can call with JTs and T9s vs wide BTN/SB shoves — they have ~40%+ equity. Regular hold'em would fold these.</td>
+      </tr>
+      <tr>
+        <td>10–12BB</td>
+        <td>AA–99, AKo/s, AQo/s, AJo/s, KQs, JTs–T9s</td>
+        <td>Pairs down to 99 are clear calls — set equity + SD board dynamics make them profitable wider than regular hold'em.</td>
+      </tr>
+      <tr>
+        <td>7–9BB</td>
+        <td>AA–88, AKo/s, AQo/s, AJo/s, KQo/s, JTs–98s, T9o</td>
+        <td>Connected suited hands now clearly profitable calls. Shover's range is wide — you need less equity to call.</td>
+      </tr>
+      <tr>
+        <td>4–6BB</td>
+        <td>Any pair, any Ax, any two broadway, strong Kx suited, connected hands 9-high+</td>
+        <td>At these odds call almost anything with any connected equity. Folding is almost never correct in SD at this depth.</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <div class="info-box amber">
+    <b>PKO bounty overlay on calling shoves:</b> Add the bounty EV (50% of bounty × your win probability) to all call calculations above. A 13BB shove that's marginally -EV in chip terms often becomes a clear call once a medium or large bounty is included. Use the same formula from the regular PKO guide: <b>Bounty EV = 0.5 × bounty value × win %.</b>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════
+     PAGE 4 — BOUNTY CALLS
+═══════════════════════════════════ -->
+<div id="page-bounty" class="content">
+  <div class="page-header">
+    <div class="page-title">Bounty Calls <span class="badge badge-sd">Short Deck</span><span class="badge badge-pko">PKO</span></div>
+    <div class="page-sub">PKO bounty math in short deck is the same formula as regular PKO — but your base calling ranges are already wider in SD, so bounty overlay pushes them wider still.</div>
+  </div>
+
+  <div class="info-box green">
+    <b>The combined effect:</b> In 6-max SD PKO, you are calling shoves wider than regular hold'em (SD equity reasons) AND wider than regular PKO (bounty reasons). The combination means many hands that are clear folds in regular PKO MTTs become clear calls here. This is a genuine edge if you understand it — most recreational players fold too much in this spot.
+  </div>
+
+  <div class="sec-title">Bounty-adjusted calling — SD PKO specific examples</div>
+  <table class="push-table">
+    <thead><tr><th>Bounty size vs buy-in</th><th>SD base range</th><th>With bounty overlay</th></tr></thead>
+    <tbody>
+      <tr>
+        <td><span class="tag tag-a">Small &lt;25%</span></td>
+        <td>AA–TT, AKo/s, AQo/s, KQs, JTs (12BB shove)</td>
+        <td>Near identical — small bounty barely moves the needle. Treat as vanilla SD.</td>
+      </tr>
+      <tr>
+        <td><span class="tag tag-a">Medium 25–75%</span></td>
+        <td>As above</td>
+        <td>Add 99–88, AJo, KQo, T9s to calling range vs 12BB shoves. Marginal SD calls flip to clear calls.</td>
+      </tr>
+      <tr>
+        <td><span class="tag tag-g">Large 75–150%</span></td>
+        <td>As above</td>
+        <td>Add 77–66, ATo, KJo, T9o, 98s. Connected hands with any equity become profitable. Wide calls justified.</td>
+      </tr>
+      <tr>
+        <td><span class="tag tag-g">Massive &gt;150%</span></td>
+        <td>As above</td>
+        <td>Call with essentially any connected hand, any pair, any Ax, any broadway. Two suited cards of any rank. The bounty overlay dominates.</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <div class="sec-title">SD PKO specific spots to watch</div>
+  <div class="remind-grid">
+    <div class="remind-card">
+      <div class="remind-card-title green">Set over set hunting</div>
+      <p>In SD, set-over-set is more common. When stacking a bounty player, <b>be aware that your set may not be the best hand.</b> A flush or a higher set beats you. Don't auto-stack off a low set on a flush-possible board for a bounty.</p>
+    </div>
+    <div class="remind-card">
+      <div class="remind-card-title amber">Flush vs full house bounty shoves</div>
+      <p>Under Triton rules a flush beats a full house. <b>Don't call off a large bounty shove with a full house on a flush-possible board</b> without thinking about whether they have the flush. This is a common SD PKO leak.</p>
+    </div>
+    <div class="remind-card">
+      <div class="remind-card-title green">3-way pots and bounties</div>
+      <p>In SD 3-way all-ins are even more chaotic — equity runs closer. <b>Overcall wider</b> in 3-way bounty pots — you only need ~25% equity to profit when two bounties are at stake and pot odds are favourable.</p>
+    </div>
+    <div class="remind-card">
+      <div class="remind-card-title red">Don't forget ICM near bubble</div>
+      <p>SD's higher variance + PKO bounty hunger near the bubble is a dangerous combination. <b>ICM cost of busting outweighs a bounty</b> in most near-bubble spots. Tighten call-offs even in SD.</p>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════
+     PAGE 5 — POSTFLOP SHIFTS
+═══════════════════════════════════ -->
+<div id="page-postflop" class="content">
+  <div class="page-header">
+    <div class="page-title">Postflop Shifts <span class="badge badge-sd">Short Deck</span></div>
+    <div class="page-sub">How to adjust your postflop thinking in short deck. The removed cards change board textures, draw strengths, and made hand values in ways that catch intuition players off guard.</div>
+  </div>
+
+  <div class="sec-title">Board texture changes</div>
+  <div class="remind-grid">
+    <div class="remind-card">
+      <div class="remind-card-title green">Paired boards are common</div>
+      <p>With 36 cards, paired boards appear far more frequently. <b>Full house potential is everywhere.</b> Don't assume your top pair or two pair is safe — someone flopping a set and improving is routine in SD.</p>
+    </div>
+    <div class="remind-card">
+      <div class="remind-card-title amber">Flush draws are weaker</div>
+      <p>Only 9 cards per suit. A flopped flush draw has <b>7 outs instead of 9</b> (one on board, you hold two = 6 remaining, but other suited cards may be in play). Don't overvalue flush draws — they're not the semi-bluff monster they are in regular hold'em.</p>
+    </div>
+    <div class="remind-card">
+      <div class="remind-card-title green">Straight draws are stronger</div>
+      <p>Connected boards are more common. <b>Open-ended straight draws have 8 outs</b> just like regular hold'em, but they complete more often because the deck is bunched. Gutshots are more valuable in SD — respect them.</p>
+    </div>
+    <div class="remind-card">
+      <div class="remind-card-title red">Two pair is not safe</div>
+      <p>In regular hold'em two pair is a strong hand. In SD, <b>two pair is frequently behind sets</b> (which appear on ~18% of flops vs any pocket pair) and is beaten by straights, flushes, and full houses constantly. Play two pair carefully — it's a medium-strength hand in SD.</p>
+    </div>
+    <div class="remind-card">
+      <div class="remind-card-title amber">Top pair needs caution</div>
+      <p>Top pair top kicker is strong but <b>opponents will have two pair, sets, and straights far more often</b> in SD than regular hold'em. Don't pay off three streets with TPTK without a read. Stack-off threshold is higher.</p>
+    </div>
+    <div class="remind-card">
+      <div class="remind-card-title blue">Nut flush is still the nuts (almost)</div>
+      <p>Under Triton rules flush beats full house. <b>Nut flush draw is your most powerful semi-bluff in SD.</b> When you have the nut flush draw, you beat not just bluffs but all full houses if you get there. Defend and semi-bluff aggressively with nut flush draws.</p>
+    </div>
+  </div>
+
+  <div class="sec-title">Hand strength recalibration — SD vs regular hold'em</div>
+  <table class="push-table">
+    <thead><tr><th>Hand</th><th>Regular hold'em</th><th>Short deck (Triton)</th></tr></thead>
+    <tbody>
+      <tr><td>Top pair top kicker</td><td>Strong — often stack-off</td><td>Medium — stack off cautiously, many better hands possible</td></tr>
+      <tr><td>Two pair</td><td>Strong — usually stack-off</td><td>Medium — sets and straights beat you constantly</td></tr>
+      <tr><td>Set (bottom)</td><td>Very strong — near-always stack off</td><td>Strong but vulnerable — sets over sets common, flush possible</td></tr>
+      <tr><td>Set (top)</td><td>Near-nut — stack off</td><td>Strong — but flush beats you in Triton rules. Check board.</td></tr>
+      <tr><td>Flush (non-nut)</td><td>Very strong</td><td>Strong — but nut flush beats you, and sets up full-house combos vs opponents</td></tr>
+      <tr><td>Nut flush</td><td>Near-nut (only SF beats)</td><td><b>Beats full houses in Triton rules.</b> Extremely powerful. Stack off.</td></tr>
+      <tr><td>Full house</td><td>Near-nut strength</td><td><b>Loses to flush in Triton rules.</b> Not the monster it feels like.</td></tr>
+      <tr><td>Straight (nut)</td><td>Very strong</td><td>Strong — but paired boards can give full houses/flushes that beat it</td></tr>
+      <tr><td>Flush draw (non-nut)</td><td>Strong semi-bluff (9 outs)</td><td>Weaker semi-bluff (7 outs) — be more selective</td></tr>
+      <tr><td>Nut flush draw</td><td>Strong semi-bluff</td><td><b>Extremely powerful semi-bluff</b> — beats full houses if it gets there</td></tr>
+      <tr><td>OESD</td><td>Good semi-bluff (8 outs)</td><td>Good semi-bluff — straights appear more often so it gets paid more</td></tr>
+    </tbody>
+  </table>
+
+  <div class="sec-title">Practical postflop rules of thumb</div>
+  <div class="remind-grid">
+    <div class="remind-card">
+      <div class="remind-card-title green">Nut flush draw = stack off</div>
+      <p>In Triton SD, the nut flush draw beats full houses if it gets there. <b>Play it like a set in regular hold'em</b> — semi-bluff hard, call raises, even consider stacking off as a draw.</p>
+    </div>
+    <div class="remind-card">
+      <div class="remind-card-title red">Full house ≠ auto stack-off</div>
+      <p><b>Always check if a flush is possible</b> before committing your stack with a full house. If the board has three of a suit and your opponent is shoving, they may well have the flush.</p>
+    </div>
+    <div class="remind-card">
+      <div class="remind-card-title amber">C-bet frequency down</div>
+      <p>Because boards connect so well with SD ranges, <b>c-betting wide as a bluff is less effective.</b> Opponents will have pairs, draws, and made hands more often. C-bet for value more, bluff less.</p>
+    </div>
+    <div class="remind-card">
+      <div class="remind-card-title green">Implied odds are massive</div>
+      <p>When you have sets or nut draws in SD, <b>implied odds are enormous</b> — opponents will stack off with two pair and non-nut flushes regularly. Call more preflop and on the flop with nutted draws.</p>
+    </div>
+    <div class="remind-card">
+      <div class="remind-card-title blue">Bet sizing — go bigger</div>
+      <p>In SD, draws complete so often that <b>slow-playing is punished more.</b> Bet larger with your strong made hands — 75–100% pot is common and correct. Don't give cheap cards.</p>
+    </div>
+    <div class="remind-card">
+      <div class="remind-card-title amber">PKO postflop note</div>
+      <p>Against a large bounty player, <b>loosen your stack-off threshold slightly</b> — the bounty EV compensates for marginal postflop calls. But don't call three streets of value with two pair just for a bounty.</p>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════
+     PAGE 6 — REMINDERS
+═══════════════════════════════════ -->
+<div id="page-reminders" class="content">
+  <div class="page-header">
+    <div class="page-title">Key Reminders <span class="badge badge-sd">Short Deck</span><span class="badge badge-pko">PKO</span></div>
+    <div class="page-sub">The things that catch intuition players out most often in SD PKO. Read before every session.</div>
+  </div>
+
+  <div class="sec-title">The biggest SD intuition traps</div>
+  <div class="remind-grid">
+    <div class="remind-card">
+      <div class="remind-card-title red">Full house ≠ near-nuts</div>
+      <p>Your regular hold'em brain screams "stack off" with a full house. <b>In Triton SD it loses to a flush.</b> Always check for flush possibility before committing your stack.</p>
+    </div>
+    <div class="remind-card">
+      <div class="remind-card-title red">Overcards aren't big favourites</div>
+      <p>AK vs 88 is basically a coin flip in SD. <b>Don't 4-bet shove AK expecting to be a 60% favourite</b> — you're not. Recalibrate your equity assumptions for all overcard vs pair matchups.</p>
+    </div>
+    <div class="remind-card">
+      <div class="remind-card-title amber">Suited hands lose preflop value</div>
+      <p>Your regular hold'em instinct adds equity to suited hands for flush potential. In SD <b>that bonus is smaller</b> — only 7 remaining flush outs. Don't over-inflate suited hand values preflop.</p>
+    </div>
+    <div class="remind-card">
+      <div class="remind-card-title green">Connectors gain preflop value</div>
+      <p>The opposite is true for connected hands. <b>T9s, J9s, 98s are genuinely powerful</b> in SD — open them from early position, call 3-bets with them, give them credit postflop.</p>
+    </div>
+    <div class="remind-card">
+      <div class="remind-card-title green">Small pairs are premium</div>
+      <p>Set frequency of ~18% means <b>66, 77, 88 are strong opening hands</b> from any position. Don't treat them as speculative in SD — they're genuine value hands.</p>
+    </div>
+    <div class="remind-card">
+      <div class="remind-card-title blue">Nut flush draw = power move</div>
+      <p>In Triton rules <b>the nut flush draw beats full houses</b> when it gets there. Semi-bluff aggressively, call raises, stack off as a draw when the price is right. It's the most undervalued draw in SD.</p>
+    </div>
+  </div>
+
+  <div class="sec-title">PKO reminders in SD context</div>
+  <div class="remind-grid">
+    <div class="remind-card">
+      <div class="remind-card-title green">Call shoves wider — double reason</div>
+      <p>You call wider in SD (equity) AND wider for bounties. <b>Combine both adjustments</b> — don't just apply one. A medium bounty + SD equity can flip clear folds into clear calls.</p>
+    </div>
+    <div class="remind-card">
+      <div class="remind-card-title amber">Don't stack off for a bounty on a flush board</div>
+      <p>Classic leak: call off a bounty shove with a full house on a three-flush board. <b>The bounty doesn't compensate for being drawing dead.</b> Check the board first.</p>
+    </div>
+    <div class="remind-card">
+      <div class="remind-card-title red">Variance is extreme in SD PKO</div>
+      <p>Short deck is already high variance. PKO adds another layer. <b>Expect wild swings.</b> 10-tournament losing runs are normal. Don't adjust strategy based on short-term results.</p>
+    </div>
+    <div class="remind-card">
+      <div class="remind-card-title amber">ICM still matters near bubble</div>
+      <p>The excitement of SD PKO can make you gamble near the bubble. <b>ICM cost of busting outweighs bounty EV</b> in most near-bubble spots — same principle as regular PKO.</p>
+    </div>
+  </div>
+
+  <div class="sec-title">Ante structure — stay aware</div>
+  <div class="remind-grid">
+    <div class="remind-card">
+      <div class="remind-card-title green">Pot is always worth stealing</div>
+      <p>6 antes means a full pot before a card is dealt. <b>Folding your button or SB without a fight is a significant mistake</b> in this structure. Attack blinds relentlessly from position.</p>
+    </div>
+    <div class="remind-card">
+      <div class="remind-card-title amber">BTN paying ante+blind</div>
+      <p>You're paying more than anyone else on the BTN. <b>This is not a reason to be passive</b> — it's a reason to be more aggressive and protect your investment by stealing the antes you paid.</p>
+    </div>
+    <div class="remind-card">
+      <div class="remind-card-title green">Stack depth shrinks faster</div>
+      <p>6 antes per hand means <b>stacks erode quicker than in blind-only games.</b> Recalculate your BB count every orbit — you hit push/fold territory faster than you expect.</p>
+    </div>
+  </div>
+</div>
+
+<script>
+function switchPage(id, btn) {
+  document.querySelectorAll('.content').forEach(c => c.classList.remove('active'));
+  document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
+  document.getElementById('page-' + id).classList.add('active');
+  btn.classList.add('active');
+}
+
+function switchPos(group, pos, btn) {
+  const page = btn.closest('.content');
+  page.querySelectorAll('.range-panel').forEach(p => p.classList.remove('active'));
+  const tabs = btn.closest('.pos-tabs');
+  if (tabs) tabs.querySelectorAll('.pos-btn').forEach(b => b.classList.remove('active'));
+  const target = document.getElementById(group + '-' + pos);
+  if (target) target.classList.add('active');
+  btn.classList.add('active');
+}
+
+function setDepth(depth, btn) {
+  document.querySelectorAll('.depth-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  document.getElementById('depth-deep').style.display  = depth === 'deep'  ? 'block' : 'none';
+  document.getElementById('depth-mid').style.display   = depth === 'mid'   ? 'block' : 'none';
+  document.getElementById('depth-short').style.display = depth === 'short' ? 'block' : 'none';
+}
+
+function switchRFI(format, pos, btn) {
+  btn.closest('.rfi-opener-tabs').querySelectorAll('.rfi-opener-btn').forEach(function(b) {
+    b.classList.remove('active');
+  });
+  btn.classList.add('active');
+  var prefix = 'vsrfi-' + format + '-';
+  document.querySelectorAll('[id]').forEach(function(el) {
+    if (el.id.indexOf(prefix) === 0) el.classList.remove('active');
+  });
+  var target = document.getElementById('vsrfi-' + format + '-' + pos);
+  if (target) target.classList.add('active');
+}
+
+</script>
+
+<div id="page-vsrfi" class="content">
+  <div class="page-header">
+    <div class="page-title">vs RFI Defence <span class="badge badge-sd">Short Deck</span><span class="badge badge-pko">PKO</span></div>
+    <div class="page-sub">Facing an RFI in 6-max SD PKO — suited connectors call wider, 4-bet bluffs are rare, and PKO bounty + SD equity combine for very wide call ranges.</div>
+  </div>
+  <div id="vsrfi-tabs-sdpko" class="rfi-opener-tabs"><button class="rfi-opener-btn active" onclick="switchRFI('sdpko','utg',this)">vs UTG Open</button><button class="rfi-opener-btn" onclick="switchRFI('sdpko','hj',this)">vs HJ Open</button><button class="rfi-opener-btn" onclick="switchRFI('sdpko','co',this)">vs CO Open</button><button class="rfi-opener-btn" onclick="switchRFI('sdpko','btn',this)">vs BTN Open</button><button class="rfi-opener-btn" onclick="switchRFI('sdpko','sb',this)">vs SB Open</button></div><div id="vsrfi-sdpko-utg" class="rfi-panel active"><p class="rfi-pos-label">UTG opens ~32% in 6-max SD PKO — much wider than regular hold'em UTG.</p><div class="rfi-grid"><div class="rfi-card"><div class="rfi-card-title call">Call (In Position)</div><div class="rfi-hand-list"><span class="h">TT</span><span class="h">99</span><span class="h">88</span><span class="h">77</span><span class="h">66</span><span class="h">AJs</span><span class="h">ATs</span><span class="h">A9s</span><span class="h">A8s</span><span class="h">KQs</span><span class="h">KJs</span><span class="h">QJs</span><span class="h">JTs</span><span class="h">J9s</span><span class="h">T9s</span><span class="h">T8s</span><span class="h">98s</span><span class="h">97s</span><span class="h">87s</span><span class="h">86s</span><span class="h">76s</span></div></div><div class="rfi-card"><div class="rfi-card-title call">Call (Out of Position)</div><div class="rfi-hand-list"><span class="h">JJ</span><span class="h">TT</span><span class="h">99</span><span class="h">AQs</span><span class="h">AJs</span><span class="h">KQs</span><span class="h">JTs</span><span class="h">T9s</span></div></div><div class="rfi-card"><div class="rfi-card-title vbet">3-Bet for Value</div><div class="rfi-hand-list"><span class="v">AA</span><span class="v">KK</span><span class="v">QQ</span><span class="v">JJ</span><span class="v">TT (IP)</span><span class="v">AKs</span><span class="v">AKo</span><span class="v">AQs</span><span class="v">AQo</span></div></div><div class="rfi-card"><div class="rfi-card-title bluff">3-Bet Bluffs</div><div class="rfi-hand-list"><span class="b">A9s (IP — blocker + equity in SD)</span><span class="b">suited connectors J8s+ (IP — strong equity vs SD ranges)</span></div></div></div><div class="rfi-card" style="margin-bottom:12px"><div class="rfi-card-title fold">Always Fold Facing This Open</div><div class="rfi-hand-list"><span class="f">Offsuit unconnected hands OOP</span><span class="f">K8o and below OOP</span><span class="f">weak suited hands with no connectivity</span></div></div><div class="rfi-card"><div class="rfi-card-title" style="color:var(--accent2,#f59e0b)">Key Rules</div><div class="rfi-rule"><b>SD ranges are wider so your defence is wider.</b> UTG opens 32% in SD — treat like HJ in full-ring.</div><div class="rfi-rule"><b>Suited connectors call in position freely.</b> T8s, 87s, 76s have massive equity in SD vs UTG's wide range.</div><div class="rfi-rule"><b>4-bet bluffs are rare in SD.</b> Suited connectors realise equity better as calls — don't 4-bet bluff hands that play well postflop.</div><div class="rfi-rule"><b>PKO bounty on UTG:</b> Widen IP pairs down to 66 — set equity + bounty overlay justifies vs SD UTG's wide range.</div></div></div><div id="vsrfi-sdpko-hj" class="rfi-panel"><p class="rfi-pos-label">HJ opens ~38% in 6-max SD PKO — attack this range aggressively.</p><div class="rfi-grid"><div class="rfi-card"><div class="rfi-card-title call">Call (In Position)</div><div class="rfi-hand-list"><span class="h">TT</span><span class="h">99</span><span class="h">88</span><span class="h">77</span><span class="h">66</span><span class="h">55</span><span class="h">AJs</span><span class="h">ATs</span><span class="h">A9s</span><span class="h">A8s</span><span class="h">A7s</span><span class="h">KQs</span><span class="h">KJs</span><span class="h">KTs</span><span class="h">QJs</span><span class="h">QTs</span><span class="h">Q9s</span><span class="h">JTs</span><span class="h">J9s</span><span class="h">J8s</span><span class="h">T9s</span><span class="h">T8s</span><span class="h">T7s</span><span class="h">98s</span><span class="h">97s</span><span class="h">96s</span><span class="h">87s</span><span class="h">86s</span><span class="h">76s</span><span class="h">75s</span><span class="h">65s</span></div></div><div class="rfi-card"><div class="rfi-card-title call">Call (Out of Position)</div><div class="rfi-hand-list"><span class="h">JJ</span><span class="h">TT</span><span class="h">99</span><span class="h">88</span><span class="h">77</span><span class="h">AQs</span><span class="h">AJs</span><span class="h">ATs</span><span class="h">KQs</span><span class="h">KJs</span><span class="h">QJs</span><span class="h">JTs</span><span class="h">T9s</span><span class="h">98s</span></div></div><div class="rfi-card"><div class="rfi-card-title vbet">3-Bet for Value</div><div class="rfi-hand-list"><span class="v">AA</span><span class="v">KK</span><span class="v">QQ</span><span class="v">JJ</span><span class="v">TT (IP)</span><span class="v">99 (IP)</span><span class="v">AKs</span><span class="v">AKo</span><span class="v">AQs</span><span class="v">AQo</span><span class="v">AJs</span></div></div><div class="rfi-card"><div class="rfi-card-title bluff">3-Bet Bluffs</div><div class="rfi-hand-list"><span class="b">A9s (IP)</span><span class="b">J9s (IP — SD straight equity)</span><span class="b">T8s (IP)</span></div></div></div><div class="rfi-card" style="margin-bottom:12px"><div class="rfi-card-title fold">Always Fold Facing This Open</div><div class="rfi-hand-list"><span class="f">22-33 OOP</span><span class="f">offsuit hands without straight connectivity OOP</span><span class="f">K7o and below OOP</span></div></div><div class="rfi-card"><div class="rfi-card-title" style="color:var(--accent2,#f59e0b)">Key Rules</div><div class="rfi-rule"><b>Suited connectors are 3-bet bluff candidates in SD.</b> J9s and T8s have real equity vs HJ's range and make great semi-bluffs.</div><div class="rfi-rule"><b>OOP call range expands in SD.</b> 77 and 88 are comfortable OOP calls vs HJ — set frequency of 18% + bounty overlay.</div><div class="rfi-rule"><b>PKO + SD combo:</b> If HJ has a large bounty, widen IP calls with any pair down to 55 — set equity + bounty is very profitable.</div></div></div><div id="vsrfi-sdpko-co" class="rfi-panel"><p class="rfi-pos-label">CO opens ~46% in 6-max SD PKO — very wide, attack from BTN/blinds.</p><div class="rfi-grid"><div class="rfi-card"><div class="rfi-card-title call">Call (In Position)</div><div class="rfi-hand-list"><span class="h">TT</span><span class="h">99</span><span class="h">88</span><span class="h">77</span><span class="h">66</span><span class="h">55</span><span class="h">44</span><span class="h">ATs</span><span class="h">A9s</span><span class="h">A8s</span><span class="h">A7s</span><span class="h">A6s</span><span class="h">KQs</span><span class="h">KJs</span><span class="h">KTs</span><span class="h">K9s</span><span class="h">K8s</span><span class="h">QJs</span><span class="h">QTs</span><span class="h">Q9s</span><span class="h">Q8s</span><span class="h">JTs</span><span class="h">J9s</span><span class="h">J8s</span><span class="h">J7s</span><span class="h">T9s</span><span class="h">T8s</span><span class="h">T7s</span><span class="h">T6s</span><span class="h">98s</span><span class="h">97s</span><span class="h">96s</span><span class="h">87s</span><span class="h">86s</span><span class="h">76s</span><span class="h">75s</span><span class="h">65s</span></div></div><div class="rfi-card"><div class="rfi-card-title call">Call (Out of Position)</div><div class="rfi-hand-list"><span class="h">JJ</span><span class="h">TT</span><span class="h">99</span><span class="h">88</span><span class="h">77</span><span class="h">66</span><span class="h">AQs</span><span class="h">AJs</span><span class="h">ATs</span><span class="h">A9s</span><span class="h">KQs</span><span class="h">KJs</span><span class="h">QJs</span><span class="h">JTs</span><span class="h">J9s</span><span class="h">T9s</span><span class="h">T8s</span><span class="h">98s</span><span class="h">87s</span></div></div><div class="rfi-card"><div class="rfi-card-title vbet">3-Bet for Value</div><div class="rfi-hand-list"><span class="v">AA</span><span class="v">KK</span><span class="v">QQ</span><span class="v">JJ</span><span class="v">TT (IP)</span><span class="v">99 (IP)</span><span class="v">AKs</span><span class="v">AKo</span><span class="v">AQs</span><span class="v">AQo</span><span class="v">AJs</span><span class="v">88 (IP vs very wide CO)</span></div></div><div class="rfi-card"><div class="rfi-card-title bluff">3-Bet Bluffs</div><div class="rfi-hand-list"><span class="b">A9s</span><span class="b">J9s</span><span class="b">T8s</span><span class="b">97s</span><span class="b">86s (all IP — SD connectivity makes these semi-bluffs powerful)</span></div></div></div><div class="rfi-card" style="margin-bottom:12px"><div class="rfi-card-title fold">Always Fold Facing This Open</div><div class="rfi-hand-list"><span class="f">22 OOP unless huge bounty</span><span class="f">K6o and below OOP</span><span class="f">pure offsuit trash</span></div></div><div class="rfi-card"><div class="rfi-card-title" style="color:var(--accent2,#f59e0b)">Key Rules</div><div class="rfi-rule"><b>BTN 3-bets CO very wide in SD PKO.</b> CO opens almost half the deck — your 3-bet range expands significantly.</div><div class="rfi-rule"><b>BB defends nearly everything.</b> CO opens ~46% and SD ranges are wide — your BB defence threshold drops close to zero.</div><div class="rfi-rule"><b>SD semi-bluff 3-bets work well.</b> Connected hands like J9s and T8s have real equity in SD — use them as 3-bet bluffs from BTN.</div><div class="rfi-rule"><b>PKO bounty on CO:</b> Call IP with 33–44 — set equity + bounty overlay vs their wide range.</div></div></div><div id="vsrfi-sdpko-btn" class="rfi-panel"><p class="rfi-pos-label">BTN opens ~65%+ in 6-max SD PKO — defend nearly everything from blinds.</p><div class="rfi-grid"><div class="rfi-card"><div class="rfi-card-title call">Call (In Position)</div><div class="rfi-hand-list"><span class="h">N/A — you are in blinds</span></div></div><div class="rfi-card"><div class="rfi-card-title call">Call (Out of Position)</div><div class="rfi-hand-list"><span class="h">Any pair 66+</span><span class="h">All Ax suited</span><span class="h">KQs-K6s</span><span class="h">QJs-Q6s</span><span class="h">JTs-J6s</span><span class="h">T9s-T6s</span><span class="h">98s-96s</span><span class="h">87s-86s</span><span class="h">76s</span><span class="h">65s</span><span class="h">AKo-A6o</span><span class="h">KQo-K8o</span><span class="h">QJo-Q8o</span><span class="h">JTo-J8o</span><span class="h">T9o-T8o</span><span class="h">98o-97o</span><span class="h">87o</span><span class="h">76o</span></div></div><div class="rfi-card"><div class="rfi-card-title vbet">3-Bet for Value</div><div class="rfi-hand-list"><span class="v">AA</span><span class="v">KK</span><span class="v">QQ</span><span class="v">JJ</span><span class="v">TT</span><span class="v">99</span><span class="v">88</span><span class="v">AKs</span><span class="v">AKo</span><span class="v">AQs</span><span class="v">AQo</span><span class="v">AJs</span><span class="v">ATs</span></div></div><div class="rfi-card"><div class="rfi-card-title bluff">3-Bet Bluffs</div><div class="rfi-hand-list"><span class="b">A9s-A6s</span><span class="b">J9s</span><span class="b">T8s</span><span class="b">97s</span><span class="b">86s</span><span class="b">76s (all semi-bluffs with SD equity)</span></div></div></div><div class="rfi-card" style="margin-bottom:12px"><div class="rfi-card-title fold">Always Fold Facing This Open</div><div class="rfi-hand-list"><span class="f">22-55 OOP (no set odds vs BTN's stack commitment in SD)</span><span class="f">pure offsuit unconnected trash</span></div></div><div class="rfi-card"><div class="rfi-card-title" style="color:var(--accent2,#f59e0b)">Key Rules</div><div class="rfi-rule"><b>BB defends extremely wide vs BTN in SD PKO.</b> BTN opens ~65% + SD ranges favour connected hands = defend almost everything connected.</div><div class="rfi-rule"><b>3-bet from BB is extremely profitable.</b> BTN folds wide AND in SD your 3-bet semi-bluffs (connected suited hands) have real equity.</div><div class="rfi-rule"><b>SD nut flush draw in 3-bet pots:</b> If you 3-bet with a suited connector and flop the nut flush draw, you can stack off — it beats full houses under Triton rules.</div><div class="rfi-rule"><b>PKO bounty on BTN:</b> Call with any pair from BB — set + bounty vs BTN's wide range is very profitable in SD.</div></div></div><div id="vsrfi-sdpko-sb" class="rfi-panel"><p class="rfi-pos-label">SB opens ~55%+ in 6-max SD PKO — BB defends essentially everything.</p><div class="rfi-grid"><div class="rfi-card"><div class="rfi-card-title call">Call (In Position)</div><div class="rfi-hand-list"><span class="h">N/A — you are BB</span></div></div><div class="rfi-card"><div class="rfi-card-title call">Call (Out of Position)</div><div class="rfi-hand-list"><span class="h">Any pair 66+</span><span class="h">All Ax suited</span><span class="h">KQs-K6s</span><span class="h">QJs-Q6s</span><span class="h">JTs-J6s</span><span class="h">T9s-T6s</span><span class="h">98s-96s</span><span class="h">87s-86s</span><span class="h">76s</span><span class="h">65s</span><span class="h">AKo-A6o</span><span class="h">KQo-K8o</span><span class="h">QJo-Q8o</span><span class="h">JTo</span><span class="h">T9o</span><span class="h">98o-97o</span><span class="h">87o</span><span class="h">76o</span></div></div><div class="rfi-card"><div class="rfi-card-title vbet">3-Bet for Value</div><div class="rfi-hand-list"><span class="v">AA</span><span class="v">KK</span><span class="v">QQ</span><span class="v">JJ</span><span class="v">TT</span><span class="v">99</span><span class="v">88</span><span class="v">77</span><span class="v">AKs</span><span class="v">AKo</span><span class="v">AQs</span><span class="v">AQo</span><span class="v">AJs</span><span class="v">ATs</span></div></div><div class="rfi-card"><div class="rfi-card-title bluff">3-Bet Bluffs</div><div class="rfi-hand-list"><span class="b">A9s-A6s</span><span class="b">J9s</span><span class="b">T8s</span><span class="b">97s</span><span class="b">86s</span><span class="b">76s</span><span class="b">65s (all have SD equity)</span></div></div></div><div class="rfi-card" style="margin-bottom:12px"><div class="rfi-card-title fold">Always Fold Facing This Open</div><div class="rfi-hand-list"><span class="f">22-55 (implied odds don't work well vs SB's committed range in SD)</span><span class="f">pure offsuit disconnected trash only</span></div></div><div class="rfi-card"><div class="rfi-card-title" style="color:var(--accent2,#f59e0b)">Key Rules</div><div class="rfi-rule"><b>BB vs SB in SD PKO — fold almost nothing.</b> SB opens ~55%+ with SD's wide connected ranges — you have position and bounty equity.</div><div class="rfi-rule"><b>SD semi-bluff 3-bets are very strong here.</b> J9s, T8s, 97s all have real equity in SD — 3-bet them as semi-bluffs and barrel connected boards.</div><div class="rfi-rule"><b>Nut flush draw in 3-bet pot vs SB:</b> Stack off — beats their full houses under Triton rules. This is your highest EV semi-bluff.</div><div class="rfi-rule"><b>PKO bounty on SB:</b> Call with any two cards that have any connectivity at all — you're IP and the combined edge of SD equity + PKO bounty is enormous.</div></div></div>
+</div>
+
+</body>
+</html>

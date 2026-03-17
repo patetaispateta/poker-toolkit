@@ -1,0 +1,591 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MTT Range Reference — Rahul</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --bg: #0f1117;
+    --surface: #1a1d27;
+    --surface2: #22263a;
+    --border: #2e3349;
+    --text: #e8eaf0;
+    --muted: #7a7f99;
+    --accent: #4f7cff;
+    --accent2: #6ee7b7;
+    --warn: #f59e0b;
+    --danger: #f87171;
+    --raise: #4f7cff;
+    --call: #6ee7b7;
+    --fold: #f87171;
+    --mixed: #f59e0b;
+  }
+  body { background: var(--bg); color: var(--text); font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; min-height: 100vh; }
+
+  /* NAV */
+  .nav { position: sticky; top: 0; z-index: 100; background: var(--bg); border-bottom: 1px solid var(--border); padding: 0 16px; display: flex; align-items: center; gap: 0; }
+  .nav-title { font-size: 13px; font-weight: 600; color: var(--muted); letter-spacing: 0.05em; text-transform: uppercase; padding: 14px 16px 14px 0; border-right: 1px solid var(--border); margin-right: 4px; white-space: nowrap; }
+  .nav-btn { padding: 12px 18px; font-size: 13px; font-weight: 500; color: var(--muted); background: none; border: none; cursor: pointer; border-bottom: 2px solid transparent; transition: color .15s, border-color .15s; white-space: nowrap; }
+  .nav-btn.active { color: var(--text); border-bottom-color: var(--accent); }
+  .nav-btn:hover:not(.active) { color: var(--text); }
+
+  /* CONTENT */
+  .content { display: none; padding: 24px 16px 40px; max-width: 900px; margin: 0 auto; }
+  .content.active { display: block; }
+
+  /* PAGE HEADER */
+  .page-header { margin-bottom: 24px; }
+  .page-title { font-size: 20px; font-weight: 700; margin-bottom: 4px; }
+  .page-sub { font-size: 13px; color: var(--muted); line-height: 1.6; }
+
+  /* POSITION TABS */
+  .pos-tabs { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 20px; }
+  .pos-btn { padding: 6px 14px; border-radius: 6px; border: 1px solid var(--border); background: var(--surface); color: var(--muted); font-size: 12px; font-weight: 600; cursor: pointer; transition: all .15s; letter-spacing: 0.04em; }
+  .pos-btn.active { background: var(--accent); border-color: var(--accent); color: #fff; }
+  .pos-btn:hover:not(.active) { border-color: var(--accent); color: var(--text); }
+
+  /* RANGE PANEL */
+  .range-panel { display: none; }
+  .range-panel.active { display: block; }
+
+  /* GRID LAYOUT */
+  .range-grid { display: grid; grid-template-columns: auto 1fr; gap: 20px; align-items: start; }
+
+  /* HAND MATRIX */
+  .matrix-wrap { overflow-x: auto; }
+  .matrix { border-collapse: collapse; font-size: 10.5px; font-weight: 600; }
+  .matrix td { width: 34px; height: 34px; text-align: center; vertical-align: middle; border: 1px solid var(--bg); border-radius: 3px; cursor: default; user-select: none; font-size: 10px; }
+  .r  { background: #2d4ecf; color: #c7d4ff; }   /* raise/open */
+  .c  { background: #1a6b4a; color: #a7f3d0; }   /* call */
+  .f  { background: #1e1e2e; color: #4a4a6a; }   /* fold */
+  .m  { background: #7c4a00; color: #fde68a; }   /* mixed */
+  .s  { background: #5b21b6; color: #ddd6fe; }   /* sometimes/marginal */
+
+  /* LEGEND */
+  .legend { display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 14px; }
+  .leg-item { display: flex; align-items: center; gap: 5px; font-size: 11px; color: var(--muted); }
+  .leg-dot { width: 12px; height: 12px; border-radius: 2px; flex-shrink: 0; }
+
+  /* NOTES PANEL */
+  .notes { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 14px 16px; }
+  .notes-title { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; color: var(--muted); margin-bottom: 10px; }
+  .note-item { font-size: 12px; color: var(--text); line-height: 1.65; padding: 5px 0; border-top: 1px solid var(--border); }
+  .note-item:first-of-type { border-top: none; }
+  .note-item b { color: var(--accent2); font-weight: 600; }
+  .tag { display: inline-block; padding: 1px 7px; border-radius: 4px; font-size: 10px; font-weight: 700; margin-right: 4px; }
+  .tag-r { background: #1e3a8a; color: #93c5fd; }
+  .tag-c { background: #064e3b; color: #6ee7b7; }
+  .tag-f { background: #1e1e2e; color: #6b7280; }
+  .tag-m { background: #451a03; color: #fde68a; }
+
+  /* STACK DEPTH SELECTOR */
+  .depth-row { display: flex; align-items: center; gap: 10px; margin-bottom: 18px; flex-wrap: wrap; }
+  .depth-label { font-size: 12px; color: var(--muted); }
+  .depth-btn { padding: 5px 12px; border-radius: 6px; border: 1px solid var(--border); background: var(--surface); color: var(--muted); font-size: 12px; cursor: pointer; transition: all .15s; }
+  .depth-btn.active { background: var(--warn); border-color: var(--warn); color: #1a1200; font-weight: 700; }
+
+  /* SECTION DIVIDER */
+  .sec-title { font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.07em; color: var(--muted); margin: 22px 0 12px; padding-bottom: 6px; border-bottom: 1px solid var(--border); }
+
+  /* REMINDER CARDS */
+  .remind-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 12px; margin-bottom: 20px; }
+  .remind-card { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 14px 16px; }
+  .remind-card-title { font-size: 12px; font-weight: 700; color: var(--accent2); margin-bottom: 6px; }
+  .remind-card p { font-size: 12px; color: var(--muted); line-height: 1.65; }
+  .remind-card p b { color: var(--text); font-weight: 600; }
+
+  @media (max-width: 640px) {
+    .range-grid { grid-template-columns: 1fr; }
+    .matrix td { width: 28px; height: 28px; font-size: 9px; }
+    .nav-title { display: none; }
+    .nav-btn { padding: 12px 12px; font-size: 12px; }
+  }
+
+/* ── VS RFI shared styles ── */
+.rfi-opener-tabs { display:flex; flex-wrap:wrap; gap:6px; margin-bottom:16px; }
+.rfi-opener-btn { padding:6px 14px; border-radius:6px; border:1px solid var(--border); background:var(--surface); color:var(--muted); font-size:12px; font-weight:600; cursor:pointer; transition:all .15s; }
+.rfi-opener-btn:hover:not(.active) { color:var(--text); }
+.rfi-panel { display:none; }
+.rfi-panel.active { display:block; }
+.rfi-grid { display:grid; grid-template-columns:1fr 1fr; gap:14px; margin-bottom:14px; }
+.rfi-card { background:var(--surface); border:1px solid var(--border); border-radius:10px; padding:13px 15px; }
+.rfi-card-title { font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:0.07em; margin-bottom:10px; }
+.rfi-card-title.call   { color:#6ee7b7; }
+.rfi-card-title.vbet   { color:#60a5fa; }
+.rfi-card-title.bluff  { color:#c084fc; }
+.rfi-card-title.fold   { color:#f87171; }
+.rfi-hand-list { font-size:11.5px; color:var(--text); line-height:1.8; }
+.rfi-hand-list span { display:inline-block; background:var(--surface2); border:1px solid var(--border); border-radius:4px; padding:1px 5px; margin:2px 2px; font-size:10.5px; font-weight:600; }
+.rfi-hand-list span.h  { color:#6ee7b7; border-color:#14532d; background:#052e16; }
+.rfi-hand-list span.v  { color:#93c5fd; border-color:#1e3a8a; background:#0c1a3a; }
+.rfi-hand-list span.b  { color:#ddd6fe; border-color:#4a1d96; background:#2e1065; }
+.rfi-hand-list span.f  { color:#f87171; border-color:#7f1d1d; background:#1a0505; }
+.rfi-pos-label { font-size:11px; color:var(--muted); font-style:italic; margin-bottom:6px; }
+.rfi-rule { font-size:12px; color:var(--text); line-height:1.7; padding:6px 0; border-top:1px solid var(--border); }
+.rfi-rule:first-child { border-top:none; }
+.rfi-rule b { font-weight:600; }
+@media(max-width:600px){ .rfi-grid { grid-template-columns:1fr; } }
+
+.rfi-opener-btn.active { background:#e94560; border-color:#e94560; color:#fff; }
+</style>
+</head>
+<body>
+
+<div class="nav">
+  <span class="nav-title">Range Ref</span>
+  <button class="nav-btn active" onclick="switchPage('rfi')">RFI Ranges</button>
+  <button class="nav-btn" onclick="switchPage('defence')">vs 3-Bet Defence</button>
+  <button class="nav-btn" onclick="switchPage('reminders')">Key Reminders</button>
+<button class="nav-btn" onclick="switchPage('vsrfi')">vs RFI</button>
+</div>
+
+<!-- ═══════════════════════════════════════════
+     PAGE 1 — RFI RANGES
+═══════════════════════════════════════════ -->
+<div id="page-rfi" class="content active">
+  <div class="page-header">
+    <div class="page-title">RFI Ranges — Early MTT (100BB deep)</div>
+    <div class="page-sub">Raise First In ranges by position. Tighten up if antes are not yet in play.</div>
+  </div>
+
+  <div class="legend">
+    <div class="leg-item"><div class="leg-dot" style="background:#2d4ecf"></div> Open raise</div>
+    <div class="leg-item"><div class="leg-dot" style="background:#7c4a00"></div> Mixed / exploitative open</div>
+    <div class="leg-item"><div class="leg-dot" style="background:#5b21b6"></div> Stack-depth dependent</div>
+    <div class="leg-item"><div class="leg-dot" style="background:#1e1e2e;border:1px solid #2e3349"></div> Fold</div>
+  </div>
+
+  <div class="pos-tabs" id="rfi-tabs">
+    <button class="pos-btn active" onclick="switchPos('rfi','utg')">UTG</button>
+    <button class="pos-btn" onclick="switchPos('rfi','utg1')">UTG+1</button>
+    <button class="pos-btn" onclick="switchPos('rfi','mp')">MP</button>
+    <button class="pos-btn" onclick="switchPos('rfi','hj')">HJ</button>
+    <button class="pos-btn" onclick="switchPos('rfi','co')">CO</button>
+    <button class="pos-btn" onclick="switchPos('rfi','btn')">BTN</button>
+    <button class="pos-btn" onclick="switchPos('rfi','sb')">SB</button>
+  </div>
+
+  <!-- UTG -->
+  <div id="rfi-utg" class="range-panel active">
+    <div class="range-grid">
+      <div class="matrix-wrap">
+        <table class="matrix">
+          <tr><td class="r">AA</td><td class="r">AKs</td><td class="r">AQs</td><td class="r">AJs</td><td class="r">ATs</td><td class="m">A9s</td><td class="f">A8s</td><td class="f">A7s</td><td class="f">A6s</td><td class="f">A5s</td><td class="f">A4s</td><td class="f">A3s</td><td class="f">A2s</td></tr>
+          <tr><td class="r">AKo</td><td class="r">KK</td><td class="r">KQs</td><td class="r">KJs</td><td class="r">KTs</td><td class="m">K9s</td><td class="f">K8s</td><td class="f">K7s</td><td class="f">K6s</td><td class="f">K5s</td><td class="f">K4s</td><td class="f">K3s</td><td class="f">K2s</td></tr>
+          <tr><td class="r">AQo</td><td class="r">KQo</td><td class="r">QQ</td><td class="r">QJs</td><td class="r">QTs</td><td class="m">Q9s</td><td class="f">Q8s</td><td class="f">Q7s</td><td class="f">Q6s</td><td class="f">Q5s</td><td class="f">Q4s</td><td class="f">Q3s</td><td class="f">Q2s</td></tr>
+          <tr><td class="r">AJo</td><td class="r">KJo</td><td class="r">QJo</td><td class="r">JJ</td><td class="r">JTs</td><td class="m">J9s</td><td class="f">J8s</td><td class="f">J7s</td><td class="f">J6s</td><td class="f">J5s</td><td class="f">J4s</td><td class="f">J3s</td><td class="f">J2s</td></tr>
+          <tr><td class="r">ATo</td><td class="r">KTo</td><td class="r">QTo</td><td class="r">JTo</td><td class="r">TT</td><td class="m">T9s</td><td class="f">T8s</td><td class="f">T7s</td><td class="f">T6s</td><td class="f">T5s</td><td class="f">T4s</td><td class="f">T3s</td><td class="f">T2s</td></tr>
+          <tr><td class="f">A9o</td><td class="f">K9o</td><td class="f">Q9o</td><td class="f">J9o</td><td class="f">T9o</td><td class="r">99</td><td class="m">98s</td><td class="f">97s</td><td class="f">96s</td><td class="f">95s</td><td class="f">94s</td><td class="f">93s</td><td class="f">92s</td></tr>
+          <tr><td class="f">A8o</td><td class="f">K8o</td><td class="f">Q8o</td><td class="f">J8o</td><td class="f">T8o</td><td class="f">98o</td><td class="r">88</td><td class="f">87s</td><td class="f">86s</td><td class="f">85s</td><td class="f">84s</td><td class="f">83s</td><td class="f">82s</td></tr>
+          <tr><td class="f">A7o</td><td class="f">K7o</td><td class="f">Q7o</td><td class="f">J7o</td><td class="f">T7o</td><td class="f">97o</td><td class="f">87o</td><td class="r">77</td><td class="f">76s</td><td class="f">75s</td><td class="f">74s</td><td class="f">73s</td><td class="f">72s</td></tr>
+          <tr><td class="f">A6o</td><td class="f">K6o</td><td class="f">Q6o</td><td class="f">J6o</td><td class="f">T6o</td><td class="f">96o</td><td class="f">86o</td><td class="f">76o</td><td class="m">66</td><td class="f">65s</td><td class="f">64s</td><td class="f">63s</td><td class="f">62s</td></tr>
+          <tr><td class="f">A5o</td><td class="f">K5o</td><td class="f">Q5o</td><td class="f">J5o</td><td class="f">T5o</td><td class="f">95o</td><td class="f">85o</td><td class="f">75o</td><td class="f">65o</td><td class="m">55</td><td class="f">54s</td><td class="f">53s</td><td class="f">52s</td></tr>
+          <tr><td class="f">A4o</td><td class="f">K4o</td><td class="f">Q4o</td><td class="f">J4o</td><td class="f">T4o</td><td class="f">94o</td><td class="f">84o</td><td class="f">74o</td><td class="f">64o</td><td class="f">54o</td><td class="f">44</td><td class="f">43s</td><td class="f">42s</td></tr>
+          <tr><td class="f">A3o</td><td class="f">K3o</td><td class="f">Q3o</td><td class="f">J3o</td><td class="f">T3o</td><td class="f">93o</td><td class="f">83o</td><td class="f">73o</td><td class="f">63o</td><td class="f">53o</td><td class="f">43o</td><td class="f">33</td><td class="f">32s</td></tr>
+          <tr><td class="f">A2o</td><td class="f">K2o</td><td class="f">Q2o</td><td class="f">J2o</td><td class="f">T2o</td><td class="f">92o</td><td class="f">82o</td><td class="f">72o</td><td class="f">62o</td><td class="f">52o</td><td class="f">42o</td><td class="f">32o</td><td class="f">22</td></tr>
+        </table>
+      </div>
+      <div class="notes">
+        <div class="notes-title">UTG — 9-handed (~14% range)</div>
+        <div class="note-item"><b>Core raises:</b> AA–77, AKo–ATo, KQo–KJo, QJo, JTo, AKs–ATs, KQs–KTs, QJs–QTs, JTs, T9s, 98s</div>
+        <div class="note-item"><b>Mixed opens:</b> 66, 55, A9s, K9s, Q9s, J9s, T9s — open exploitatively vs weak tables only</div>
+        <div class="note-item"><b>Always fold:</b> Offsuit broadways below JTo, all K-x, Q-x, J-x off-suit below listed, all suited connectors below 98s</div>
+        <div class="note-item"><b>Sizing:</b> 2.5x with antes in play. 3x without antes.</div>
+        <div class="note-item"><b>Mood check:</b> If you're unsure — fold it. UTG mistakes are the most costly.</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- UTG+1 -->
+  <div id="rfi-utg1" class="range-panel">
+    <div class="range-grid">
+      <div class="matrix-wrap">
+        <table class="matrix">
+          <tr><td class="r">AA</td><td class="r">AKs</td><td class="r">AQs</td><td class="r">AJs</td><td class="r">ATs</td><td class="m">A9s</td><td class="m">A8s</td><td class="f">A7s</td><td class="f">A6s</td><td class="m">A5s</td><td class="f">A4s</td><td class="f">A3s</td><td class="f">A2s</td></tr>
+          <tr><td class="r">AKo</td><td class="r">KK</td><td class="r">KQs</td><td class="r">KJs</td><td class="r">KTs</td><td class="m">K9s</td><td class="f">K8s</td><td class="f">K7s</td><td class="f">K6s</td><td class="f">K5s</td><td class="f">K4s</td><td class="f">K3s</td><td class="f">K2s</td></tr>
+          <tr><td class="r">AQo</td><td class="r">KQo</td><td class="r">QQ</td><td class="r">QJs</td><td class="r">QTs</td><td class="m">Q9s</td><td class="f">Q8s</td><td class="f">Q7s</td><td class="f">Q6s</td><td class="f">Q5s</td><td class="f">Q4s</td><td class="f">Q3s</td><td class="f">Q2s</td></tr>
+          <tr><td class="r">AJo</td><td class="r">KJo</td><td class="r">QJo</td><td class="r">JJ</td><td class="r">JTs</td><td class="m">J9s</td><td class="f">J8s</td><td class="f">J7s</td><td class="f">J6s</td><td class="f">J5s</td><td class="f">J4s</td><td class="f">J3s</td><td class="f">J2s</td></tr>
+          <tr><td class="r">ATo</td><td class="r">KTo</td><td class="r">QTo</td><td class="r">JTo</td><td class="r">TT</td><td class="r">T9s</td><td class="f">T8s</td><td class="f">T7s</td><td class="f">T6s</td><td class="f">T5s</td><td class="f">T4s</td><td class="f">T3s</td><td class="f">T2s</td></tr>
+          <tr><td class="f">A9o</td><td class="f">K9o</td><td class="f">Q9o</td><td class="f">J9o</td><td class="f">T9o</td><td class="r">99</td><td class="m">98s</td><td class="f">97s</td><td class="f">96s</td><td class="f">95s</td><td class="f">94s</td><td class="f">93s</td><td class="f">92s</td></tr>
+          <tr><td class="f">A8o</td><td class="f">K8o</td><td class="f">Q8o</td><td class="f">J8o</td><td class="f">T8o</td><td class="f">98o</td><td class="r">88</td><td class="m">87s</td><td class="f">86s</td><td class="f">85s</td><td class="f">84s</td><td class="f">83s</td><td class="f">82s</td></tr>
+          <tr><td class="f">A7o</td><td class="f">K7o</td><td class="f">Q7o</td><td class="f">J7o</td><td class="f">T7o</td><td class="f">97o</td><td class="f">87o</td><td class="r">77</td><td class="m">76s</td><td class="f">75s</td><td class="f">74s</td><td class="f">73s</td><td class="f">72s</td></tr>
+          <tr><td class="f">A6o</td><td class="f">K6o</td><td class="f">Q6o</td><td class="f">J6o</td><td class="f">T6o</td><td class="f">96o</td><td class="f">86o</td><td class="f">76o</td><td class="m">66</td><td class="m">65s</td><td class="f">64s</td><td class="f">63s</td><td class="f">62s</td></tr>
+          <tr><td class="f">A5o</td><td class="f">K5o</td><td class="f">Q5o</td><td class="f">J5o</td><td class="f">T5o</td><td class="f">95o</td><td class="f">85o</td><td class="f">75o</td><td class="f">65o</td><td class="m">55</td><td class="f">54s</td><td class="f">53s</td><td class="f">52s</td></tr>
+          <tr><td class="f">A4o</td><td class="f">K4o</td><td class="f">Q4o</td><td class="f">J4o</td><td class="f">T4o</td><td class="f">94o</td><td class="f">84o</td><td class="f">74o</td><td class="f">64o</td><td class="f">54o</td><td class="m">44</td><td class="f">43s</td><td class="f">42s</td></tr>
+          <tr><td class="f">A3o</td><td class="f">K3o</td><td class="f">Q3o</td><td class="f">J3o</td><td class="f">T3o</td><td class="f">93o</td><td class="f">83o</td><td class="f">73o</td><td class="f">63o</td><td class="f">53o</td><td class="f">43o</td><td class="f">33</td><td class="f">32s</td></tr>
+          <tr><td class="f">A2o</td><td class="f">K2o</td><td class="f">Q2o</td><td class="f">J2o</td><td class="f">T2o</td><td class="f">92o</td><td class="f">82o</td><td class="f">72o</td><td class="f">62o</td><td class="f">52o</td><td class="f">42o</td><td class="f">32o</td><td class="f">22</td></tr>
+        </table>
+      </div>
+      <div class="notes">
+        <div class="notes-title">UTG+1 — (~16% range)</div>
+        <div class="note-item"><b>Added vs UTG:</b> A8s, A5s (wheel draw), 87s, 76s, 65s, 44, mixed 66/55</div>
+        <div class="note-item"><b>Still avoid:</b> Any offsuit hands not listed, low suited gappers</div>
+        <div class="note-item"><b>Sizing:</b> 2.5x with antes. 3x without.</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- MP -->
+  <div id="rfi-mp" class="range-panel">
+    <div class="range-grid">
+      <div class="matrix-wrap">
+        <table class="matrix">
+          <tr><td class="r">AA</td><td class="r">AKs</td><td class="r">AQs</td><td class="r">AJs</td><td class="r">ATs</td><td class="r">A9s</td><td class="m">A8s</td><td class="f">A7s</td><td class="f">A6s</td><td class="r">A5s</td><td class="m">A4s</td><td class="m">A3s</td><td class="m">A2s</td></tr>
+          <tr><td class="r">AKo</td><td class="r">KK</td><td class="r">KQs</td><td class="r">KJs</td><td class="r">KTs</td><td class="r">K9s</td><td class="m">K8s</td><td class="f">K7s</td><td class="f">K6s</td><td class="f">K5s</td><td class="f">K4s</td><td class="f">K3s</td><td class="f">K2s</td></tr>
+          <tr><td class="r">AQo</td><td class="r">KQo</td><td class="r">QQ</td><td class="r">QJs</td><td class="r">QTs</td><td class="r">Q9s</td><td class="m">Q8s</td><td class="f">Q7s</td><td class="f">Q6s</td><td class="f">Q5s</td><td class="f">Q4s</td><td class="f">Q3s</td><td class="f">Q2s</td></tr>
+          <tr><td class="r">AJo</td><td class="r">KJo</td><td class="r">QJo</td><td class="r">JJ</td><td class="r">JTs</td><td class="r">J9s</td><td class="m">J8s</td><td class="f">J7s</td><td class="f">J6s</td><td class="f">J5s</td><td class="f">J4s</td><td class="f">J3s</td><td class="f">J2s</td></tr>
+          <tr><td class="r">ATo</td><td class="r">KTo</td><td class="r">QTo</td><td class="r">JTo</td><td class="r">TT</td><td class="r">T9s</td><td class="m">T8s</td><td class="f">T7s</td><td class="f">T6s</td><td class="f">T5s</td><td class="f">T4s</td><td class="f">T3s</td><td class="f">T2s</td></tr>
+          <tr><td class="f">A9o</td><td class="f">K9o</td><td class="f">Q9o</td><td class="f">J9o</td><td class="f">T9o</td><td class="r">99</td><td class="r">98s</td><td class="m">97s</td><td class="f">96s</td><td class="f">95s</td><td class="f">94s</td><td class="f">93s</td><td class="f">92s</td></tr>
+          <tr><td class="f">A8o</td><td class="f">K8o</td><td class="f">Q8o</td><td class="f">J8o</td><td class="f">T8o</td><td class="f">98o</td><td class="r">88</td><td class="r">87s</td><td class="m">86s</td><td class="f">85s</td><td class="f">84s</td><td class="f">83s</td><td class="f">82s</td></tr>
+          <tr><td class="f">A7o</td><td class="f">K7o</td><td class="f">Q7o</td><td class="f">J7o</td><td class="f">T7o</td><td class="f">97o</td><td class="f">87o</td><td class="r">77</td><td class="r">76s</td><td class="m">75s</td><td class="f">74s</td><td class="f">73s</td><td class="f">72s</td></tr>
+          <tr><td class="f">A6o</td><td class="f">K6o</td><td class="f">Q6o</td><td class="f">J6o</td><td class="f">T6o</td><td class="f">96o</td><td class="f">86o</td><td class="f">76o</td><td class="r">66</td><td class="m">65s</td><td class="m">64s</td><td class="f">63s</td><td class="f">62s</td></tr>
+          <tr><td class="f">A5o</td><td class="f">K5o</td><td class="f">Q5o</td><td class="f">J5o</td><td class="f">T5o</td><td class="f">95o</td><td class="f">85o</td><td class="f">75o</td><td class="f">65o</td><td class="r">55</td><td class="m">54s</td><td class="f">53s</td><td class="f">52s</td></tr>
+          <tr><td class="f">A4o</td><td class="f">K4o</td><td class="f">Q4o</td><td class="f">J4o</td><td class="f">T4o</td><td class="f">94o</td><td class="f">84o</td><td class="f">74o</td><td class="f">64o</td><td class="f">54o</td><td class="m">44</td><td class="f">43s</td><td class="f">42s</td></tr>
+          <tr><td class="f">A3o</td><td class="f">K3o</td><td class="f">Q3o</td><td class="f">J3o</td><td class="f">T3o</td><td class="f">93o</td><td class="f">83o</td><td class="f">73o</td><td class="f">63o</td><td class="f">53o</td><td class="f">43o</td><td class="f">33</td><td class="f">32s</td></tr>
+          <tr><td class="f">A2o</td><td class="f">K2o</td><td class="f">Q2o</td><td class="f">J2o</td><td class="f">T2o</td><td class="f">92o</td><td class="f">82o</td><td class="f">72o</td><td class="f">62o</td><td class="f">52o</td><td class="f">42o</td><td class="f">32o</td><td class="f">22</td></tr>
+        </table>
+      </div>
+      <div class="notes">
+        <div class="notes-title">MP — (~20% range)</div>
+        <div class="note-item"><b>Added vs UTG+1:</b> A9s, K8s, Q8s–Q9s, J8s–J9s, T8s, 97s, 86s, 75s, 65s–64s, 54s, A2s–A5s (wheel draws)</div>
+        <div class="note-item"><b>Small pairs:</b> 44 mixed open. 33/22 still fold.</div>
+        <div class="note-item"><b>Sizing:</b> 2.5x with antes. 3x without.</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- HJ -->
+  <div id="rfi-hj" class="range-panel">
+    <div class="range-grid">
+      <div class="matrix-wrap">
+        <table class="matrix">
+          <tr><td class="r">AA</td><td class="r">AKs</td><td class="r">AQs</td><td class="r">AJs</td><td class="r">ATs</td><td class="r">A9s</td><td class="r">A8s</td><td class="m">A7s</td><td class="m">A6s</td><td class="r">A5s</td><td class="r">A4s</td><td class="r">A3s</td><td class="r">A2s</td></tr>
+          <tr><td class="r">AKo</td><td class="r">KK</td><td class="r">KQs</td><td class="r">KJs</td><td class="r">KTs</td><td class="r">K9s</td><td class="r">K8s</td><td class="m">K7s</td><td class="f">K6s</td><td class="f">K5s</td><td class="f">K4s</td><td class="f">K3s</td><td class="f">K2s</td></tr>
+          <tr><td class="r">AQo</td><td class="r">KQo</td><td class="r">QQ</td><td class="r">QJs</td><td class="r">QTs</td><td class="r">Q9s</td><td class="r">Q8s</td><td class="m">Q7s</td><td class="f">Q6s</td><td class="f">Q5s</td><td class="f">Q4s</td><td class="f">Q3s</td><td class="f">Q2s</td></tr>
+          <tr><td class="r">AJo</td><td class="r">KJo</td><td class="r">QJo</td><td class="r">JJ</td><td class="r">JTs</td><td class="r">J9s</td><td class="r">J8s</td><td class="m">J7s</td><td class="f">J6s</td><td class="f">J5s</td><td class="f">J4s</td><td class="f">J3s</td><td class="f">J2s</td></tr>
+          <tr><td class="r">ATo</td><td class="r">KTo</td><td class="r">QTo</td><td class="r">JTo</td><td class="r">TT</td><td class="r">T9s</td><td class="r">T8s</td><td class="m">T7s</td><td class="f">T6s</td><td class="f">T5s</td><td class="f">T4s</td><td class="f">T3s</td><td class="f">T2s</td></tr>
+          <tr><td class="m">A9o</td><td class="f">K9o</td><td class="f">Q9o</td><td class="f">J9o</td><td class="f">T9o</td><td class="r">99</td><td class="r">98s</td><td class="r">97s</td><td class="m">96s</td><td class="f">95s</td><td class="f">94s</td><td class="f">93s</td><td class="f">92s</td></tr>
+          <tr><td class="f">A8o</td><td class="f">K8o</td><td class="f">Q8o</td><td class="f">J8o</td><td class="f">T8o</td><td class="f">98o</td><td class="r">88</td><td class="r">87s</td><td class="r">86s</td><td class="m">85s</td><td class="f">84s</td><td class="f">83s</td><td class="f">82s</td></tr>
+          <tr><td class="f">A7o</td><td class="f">K7o</td><td class="f">Q7o</td><td class="f">J7o</td><td class="f">T7o</td><td class="f">97o</td><td class="f">87o</td><td class="r">77</td><td class="r">76s</td><td class="r">75s</td><td class="m">74s</td><td class="f">73s</td><td class="f">72s</td></tr>
+          <tr><td class="f">A6o</td><td class="f">K6o</td><td class="f">Q6o</td><td class="f">J6o</td><td class="f">T6o</td><td class="f">96o</td><td class="f">86o</td><td class="f">76o</td><td class="r">66</td><td class="r">65s</td><td class="r">64s</td><td class="m">63s</td><td class="f">62s</td></tr>
+          <tr><td class="f">A5o</td><td class="f">K5o</td><td class="f">Q5o</td><td class="f">J5o</td><td class="f">T5o</td><td class="f">95o</td><td class="f">85o</td><td class="f">75o</td><td class="f">65o</td><td class="r">55</td><td class="r">54s</td><td class="m">53s</td><td class="f">52s</td></tr>
+          <tr><td class="f">A4o</td><td class="f">K4o</td><td class="f">Q4o</td><td class="f">J4o</td><td class="f">T4o</td><td class="f">94o</td><td class="f">84o</td><td class="f">74o</td><td class="f">64o</td><td class="f">54o</td><td class="r">44</td><td class="m">43s</td><td class="f">42s</td></tr>
+          <tr><td class="f">A3o</td><td class="f">K3o</td><td class="f">Q3o</td><td class="f">J3o</td><td class="f">T3o</td><td class="f">93o</td><td class="f">83o</td><td class="f">73o</td><td class="f">63o</td><td class="f">53o</td><td class="f">43o</td><td class="m">33</td><td class="f">32s</td></tr>
+          <tr><td class="f">A2o</td><td class="f">K2o</td><td class="f">Q2o</td><td class="f">J2o</td><td class="f">T2o</td><td class="f">92o</td><td class="f">82o</td><td class="f">72o</td><td class="f">62o</td><td class="f">52o</td><td class="f">42o</td><td class="f">32o</td><td class="f">22</td></tr>
+        </table>
+      </div>
+      <div class="notes">
+        <div class="notes-title">HJ — (~24% range)</div>
+        <div class="note-item"><b>New additions:</b> K8s, Q8s, J8s, T8s, 96s, 85s, 74s, 63s, 53s, 43s, A7s–A6s mixed, 33 mixed</div>
+        <div class="note-item"><b>A9o:</b> Mixed open — board texture dependent. Still avoid vs tight UTG opens.</div>
+        <div class="note-item"><b>Sizing:</b> 2.5x with antes.</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- CO -->
+  <div id="rfi-co" class="range-panel">
+    <div class="range-grid">
+      <div class="matrix-wrap">
+        <table class="matrix">
+          <tr><td class="r">AA</td><td class="r">AKs</td><td class="r">AQs</td><td class="r">AJs</td><td class="r">ATs</td><td class="r">A9s</td><td class="r">A8s</td><td class="r">A7s</td><td class="r">A6s</td><td class="r">A5s</td><td class="r">A4s</td><td class="r">A3s</td><td class="r">A2s</td></tr>
+          <tr><td class="r">AKo</td><td class="r">KK</td><td class="r">KQs</td><td class="r">KJs</td><td class="r">KTs</td><td class="r">K9s</td><td class="r">K8s</td><td class="r">K7s</td><td class="m">K6s</td><td class="f">K5s</td><td class="f">K4s</td><td class="f">K3s</td><td class="f">K2s</td></tr>
+          <tr><td class="r">AQo</td><td class="r">KQo</td><td class="r">QQ</td><td class="r">QJs</td><td class="r">QTs</td><td class="r">Q9s</td><td class="r">Q8s</td><td class="r">Q7s</td><td class="m">Q6s</td><td class="f">Q5s</td><td class="f">Q4s</td><td class="f">Q3s</td><td class="f">Q2s</td></tr>
+          <tr><td class="r">AJo</td><td class="r">KJo</td><td class="r">QJo</td><td class="r">JJ</td><td class="r">JTs</td><td class="r">J9s</td><td class="r">J8s</td><td class="r">J7s</td><td class="m">J6s</td><td class="f">J5s</td><td class="f">J4s</td><td class="f">J3s</td><td class="f">J2s</td></tr>
+          <tr><td class="r">ATo</td><td class="r">KTo</td><td class="r">QTo</td><td class="r">JTo</td><td class="r">TT</td><td class="r">T9s</td><td class="r">T8s</td><td class="r">T7s</td><td class="m">T6s</td><td class="f">T5s</td><td class="f">T4s</td><td class="f">T3s</td><td class="f">T2s</td></tr>
+          <tr><td class="r">A9o</td><td class="m">K9o</td><td class="m">Q9o</td><td class="m">J9o</td><td class="f">T9o</td><td class="r">99</td><td class="r">98s</td><td class="r">97s</td><td class="r">96s</td><td class="m">95s</td><td class="f">94s</td><td class="f">93s</td><td class="f">92s</td></tr>
+          <tr><td class="m">A8o</td><td class="f">K8o</td><td class="f">Q8o</td><td class="f">J8o</td><td class="f">T8o</td><td class="f">98o</td><td class="r">88</td><td class="r">87s</td><td class="r">86s</td><td class="r">85s</td><td class="m">84s</td><td class="f">83s</td><td class="f">82s</td></tr>
+          <tr><td class="f">A7o</td><td class="f">K7o</td><td class="f">Q7o</td><td class="f">J7o</td><td class="f">T7o</td><td class="f">97o</td><td class="f">87o</td><td class="r">77</td><td class="r">76s</td><td class="r">75s</td><td class="r">74s</td><td class="m">73s</td><td class="f">72s</td></tr>
+          <tr><td class="f">A6o</td><td class="f">K6o</td><td class="f">Q6o</td><td class="f">J6o</td><td class="f">T6o</td><td class="f">96o</td><td class="f">86o</td><td class="f">76o</td><td class="r">66</td><td class="r">65s</td><td class="r">64s</td><td class="r">63s</td><td class="m">62s</td></tr>
+          <tr><td class="f">A5o</td><td class="f">K5o</td><td class="f">Q5o</td><td class="f">J5o</td><td class="f">T5o</td><td class="f">95o</td><td class="f">85o</td><td class="f">75o</td><td class="f">65o</td><td class="r">55</td><td class="r">54s</td><td class="r">53s</td><td class="m">52s</td></tr>
+          <tr><td class="f">A4o</td><td class="f">K4o</td><td class="f">Q4o</td><td class="f">J4o</td><td class="f">T4o</td><td class="f">94o</td><td class="f">84o</td><td class="f">74o</td><td class="f">64o</td><td class="f">54o</td><td class="r">44</td><td class="r">43s</td><td class="m">42s</td></tr>
+          <tr><td class="f">A3o</td><td class="f">K3o</td><td class="f">Q3o</td><td class="f">J3o</td><td class="f">T3o</td><td class="f">93o</td><td class="f">83o</td><td class="f">73o</td><td class="f">63o</td><td class="f">53o</td><td class="f">43o</td><td class="r">33</td><td class="f">32s</td></tr>
+          <tr><td class="f">A2o</td><td class="f">K2o</td><td class="f">Q2o</td><td class="f">J2o</td><td class="f">T2o</td><td class="f">92o</td><td class="f">82o</td><td class="f">72o</td><td class="f">62o</td><td class="f">52o</td><td class="f">42o</td><td class="f">32o</td><td class="m">22</td></tr>
+        </table>
+      </div>
+      <div class="notes">
+        <div class="notes-title">CO — (~30% range)</div>
+        <div class="note-item"><b>Opens up significantly:</b> All Ax suited, K7s, Q7s, J7s, T7s, all suited connectors down to 43s</div>
+        <div class="note-item"><b>Offsuit adds:</b> A9o, A8o mixed, K9o–Q9o–J9o mixed</div>
+        <div class="note-item"><b>Still disciplined:</b> K-x, Q-x, J-x offsuit below listed = fold</div>
+        <div class="note-item"><b>Sizing:</b> 2.2–2.5x with antes.</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- BTN -->
+  <div id="rfi-btn" class="range-panel">
+    <div class="range-grid">
+      <div class="matrix-wrap">
+        <table class="matrix">
+          <tr><td class="r">AA</td><td class="r">AKs</td><td class="r">AQs</td><td class="r">AJs</td><td class="r">ATs</td><td class="r">A9s</td><td class="r">A8s</td><td class="r">A7s</td><td class="r">A6s</td><td class="r">A5s</td><td class="r">A4s</td><td class="r">A3s</td><td class="r">A2s</td></tr>
+          <tr><td class="r">AKo</td><td class="r">KK</td><td class="r">KQs</td><td class="r">KJs</td><td class="r">KTs</td><td class="r">K9s</td><td class="r">K8s</td><td class="r">K7s</td><td class="r">K6s</td><td class="r">K5s</td><td class="r">K4s</td><td class="r">K3s</td><td class="r">K2s</td></tr>
+          <tr><td class="r">AQo</td><td class="r">KQo</td><td class="r">QQ</td><td class="r">QJs</td><td class="r">QTs</td><td class="r">Q9s</td><td class="r">Q8s</td><td class="r">Q7s</td><td class="r">Q6s</td><td class="r">Q5s</td><td class="r">Q4s</td><td class="r">Q3s</td><td class="r">Q2s</td></tr>
+          <tr><td class="r">AJo</td><td class="r">KJo</td><td class="r">QJo</td><td class="r">JJ</td><td class="r">JTs</td><td class="r">J9s</td><td class="r">J8s</td><td class="r">J7s</td><td class="r">J6s</td><td class="r">J5s</td><td class="r">J4s</td><td class="r">J3s</td><td class="r">J2s</td></tr>
+          <tr><td class="r">ATo</td><td class="r">KTo</td><td class="r">QTo</td><td class="r">JTo</td><td class="r">TT</td><td class="r">T9s</td><td class="r">T8s</td><td class="r">T7s</td><td class="r">T6s</td><td class="r">T5s</td><td class="r">T4s</td><td class="r">T3s</td><td class="r">T2s</td></tr>
+          <tr><td class="r">A9o</td><td class="r">K9o</td><td class="r">Q9o</td><td class="r">J9o</td><td class="r">T9o</td><td class="r">99</td><td class="r">98s</td><td class="r">97s</td><td class="r">96s</td><td class="r">95s</td><td class="r">94s</td><td class="r">93s</td><td class="r">92s</td></tr>
+          <tr><td class="r">A8o</td><td class="r">K8o</td><td class="r">Q8o</td><td class="r">J8o</td><td class="r">T8o</td><td class="f">98o</td><td class="r">88</td><td class="r">87s</td><td class="r">86s</td><td class="r">85s</td><td class="r">84s</td><td class="r">83s</td><td class="r">82s</td></tr>
+          <tr><td class="r">A7o</td><td class="r">K7o</td><td class="r">Q7o</td><td class="r">J7o</td><td class="r">T7o</td><td class="r">97o</td><td class="f">87o</td><td class="r">77</td><td class="r">76s</td><td class="r">75s</td><td class="r">74s</td><td class="r">73s</td><td class="r">72s</td></tr>
+          <tr><td class="r">A6o</td><td class="r">K6o</td><td class="r">Q6o</td><td class="r">J6o</td><td class="r">T6o</td><td class="r">96o</td><td class="r">86o</td><td class="f">76o</td><td class="r">66</td><td class="r">65s</td><td class="r">64s</td><td class="r">63s</td><td class="r">62s</td></tr>
+          <tr><td class="r">A5o</td><td class="r">K5o</td><td class="r">Q5o</td><td class="r">J5o</td><td class="r">T5o</td><td class="r">95o</td><td class="r">85o</td><td class="r">75o</td><td class="f">65o</td><td class="r">55</td><td class="r">54s</td><td class="r">53s</td><td class="r">52s</td></tr>
+          <tr><td class="r">A4o</td><td class="r">K4o</td><td class="r">Q4o</td><td class="r">J4o</td><td class="r">T4o</td><td class="r">94o</td><td class="r">84o</td><td class="f">74o</td><td class="f">64o</td><td class="f">54o</td><td class="r">44</td><td class="r">43s</td><td class="r">42s</td></tr>
+          <tr><td class="r">A3o</td><td class="r">K3o</td><td class="r">Q3o</td><td class="r">J3o</td><td class="r">T3o</td><td class="r">93o</td><td class="r">83o</td><td class="f">73o</td><td class="f">63o</td><td class="f">53o</td><td class="f">43o</td><td class="r">33</td><td class="r">32s</td></tr>
+          <tr><td class="r">A2o</td><td class="r">K2o</td><td class="r">Q2o</td><td class="r">J2o</td><td class="r">T2o</td><td class="r">92o</td><td class="r">82o</td><td class="f">72o</td><td class="f">62o</td><td class="f">52o</td><td class="f">42o</td><td class="f">32o</td><td class="r">22</td></tr>
+        </table>
+      </div>
+      <div class="notes">
+        <div class="notes-title">BTN — (~45% range)</div>
+        <div class="note-item"><b>Opens nearly everything:</b> All suited hands, all Ax, all Kx, most Qx/Jx/Tx offsuit</div>
+        <div class="note-item"><b>Still fold:</b> Very weak offsuit combos — 72o, 62o, 52o, 63o–43o offsuit, 74o</div>
+        <div class="note-item"><b>Key mindset:</b> Position is your edge here. Even marginal hands play well in position.</div>
+        <div class="note-item"><b>Sizing:</b> 2.2x with antes. Go smaller to steal light.</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- SB -->
+  <div id="rfi-sb" class="range-panel">
+    <div class="range-grid">
+      <div class="matrix-wrap">
+        <table class="matrix">
+          <tr><td class="r">AA</td><td class="r">AKs</td><td class="r">AQs</td><td class="r">AJs</td><td class="r">ATs</td><td class="r">A9s</td><td class="r">A8s</td><td class="r">A7s</td><td class="r">A6s</td><td class="r">A5s</td><td class="r">A4s</td><td class="r">A3s</td><td class="r">A2s</td></tr>
+          <tr><td class="r">AKo</td><td class="r">KK</td><td class="r">KQs</td><td class="r">KJs</td><td class="r">KTs</td><td class="r">K9s</td><td class="r">K8s</td><td class="r">K7s</td><td class="r">K6s</td><td class="r">K5s</td><td class="r">K4s</td><td class="r">K3s</td><td class="r">K2s</td></tr>
+          <tr><td class="r">AQo</td><td class="r">KQo</td><td class="r">QQ</td><td class="r">QJs</td><td class="r">QTs</td><td class="r">Q9s</td><td class="r">Q8s</td><td class="r">Q7s</td><td class="r">Q6s</td><td class="r">Q5s</td><td class="r">Q4s</td><td class="r">Q3s</td><td class="r">Q2s</td></tr>
+          <tr><td class="r">AJo</td><td class="r">KJo</td><td class="r">QJo</td><td class="r">JJ</td><td class="r">JTs</td><td class="r">J9s</td><td class="r">J8s</td><td class="r">J7s</td><td class="r">J6s</td><td class="r">J5s</td><td class="r">J4s</td><td class="r">J3s</td><td class="r">J2s</td></tr>
+          <tr><td class="r">ATo</td><td class="r">KTo</td><td class="r">QTo</td><td class="r">JTo</td><td class="r">TT</td><td class="r">T9s</td><td class="r">T8s</td><td class="r">T7s</td><td class="r">T6s</td><td class="r">T5s</td><td class="r">T4s</td><td class="r">T3s</td><td class="r">T2s</td></tr>
+          <tr><td class="r">A9o</td><td class="r">K9o</td><td class="r">Q9o</td><td class="r">J9o</td><td class="r">T9o</td><td class="r">99</td><td class="r">98s</td><td class="r">97s</td><td class="r">96s</td><td class="r">95s</td><td class="r">94s</td><td class="r">93s</td><td class="r">92s</td></tr>
+          <tr><td class="r">A8o</td><td class="r">K8o</td><td class="r">Q8o</td><td class="r">J8o</td><td class="r">T8o</td><td class="r">98o</td><td class="r">88</td><td class="r">87s</td><td class="r">86s</td><td class="r">85s</td><td class="r">84s</td><td class="r">83s</td><td class="r">82s</td></tr>
+          <tr><td class="r">A7o</td><td class="r">K7o</td><td class="r">Q7o</td><td class="r">J7o</td><td class="r">T7o</td><td class="r">97o</td><td class="r">87o</td><td class="r">77</td><td class="r">76s</td><td class="r">75s</td><td class="r">74s</td><td class="r">73s</td><td class="r">72s</td></tr>
+          <tr><td class="r">A6o</td><td class="r">K6o</td><td class="r">Q6o</td><td class="r">J6o</td><td class="r">T6o</td><td class="r">96o</td><td class="r">86o</td><td class="r">76o</td><td class="r">66</td><td class="r">65s</td><td class="r">64s</td><td class="r">63s</td><td class="r">62s</td></tr>
+          <tr><td class="r">A5o</td><td class="r">K5o</td><td class="r">Q5o</td><td class="r">J5o</td><td class="r">T5o</td><td class="r">95o</td><td class="r">85o</td><td class="r">75o</td><td class="r">65o</td><td class="r">55</td><td class="r">54s</td><td class="r">53s</td><td class="r">52s</td></tr>
+          <tr><td class="r">A4o</td><td class="r">K4o</td><td class="r">Q4o</td><td class="r">J4o</td><td class="r">T4o</td><td class="r">94o</td><td class="r">84o</td><td class="r">74o</td><td class="r">64o</td><td class="r">54o</td><td class="r">44</td><td class="r">43s</td><td class="r">42s</td></tr>
+          <tr><td class="r">A3o</td><td class="r">K3o</td><td class="r">Q3o</td><td class="r">J3o</td><td class="r">T3o</td><td class="r">93o</td><td class="r">83o</td><td class="r">73o</td><td class="r">63o</td><td class="r">53o</td><td class="r">43o</td><td class="r">33</td><td class="r">32s</td></tr>
+          <tr><td class="r">A2o</td><td class="r">K2o</td><td class="r">Q2o</td><td class="r">J2o</td><td class="r">T2o</td><td class="r">92o</td><td class="r">82o</td><td class="r">72o</td><td class="r">62o</td><td class="r">52o</td><td class="r">42o</td><td class="r">32o</td><td class="r">22</td></tr>
+        </table>
+      </div>
+      <div class="notes">
+        <div class="notes-title">SB — (~55%+ range vs BTN fold)</div>
+        <div class="note-item"><b>vs a fold from everyone:</b> Open almost your entire range. You only play the BB.</div>
+        <div class="note-item"><b>Always raise, never limp:</b> Limping SB is exploitable. Raise or fold.</div>
+        <div class="note-item"><b>Sizing:</b> 3x to put BB in a tough spot. Avoid min-raising — it invites calls.</div>
+        <div class="note-item"><b>Tighten up if:</b> BTN or CO have limped in — they now have a live hand.</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════
+     PAGE 2 — 3-BET DEFENCE
+═══════════════════════════════════════════ -->
+<div id="page-defence" class="content">
+  <div class="page-header">
+    <div class="page-title">Defending Your RFI vs a 3-Bet</div>
+    <div class="page-sub">How to respond when you open and face a 3-bet. Select your open position and the 3-bettor's position.</div>
+  </div>
+
+  <div class="sec-title">Your open position</div>
+  <div class="pos-tabs" id="def-tabs">
+    <button class="pos-btn active" onclick="switchPos('def','ep')">EP (UTG/UTG+1)</button>
+    <button class="pos-btn" onclick="switchPos('def','mp')">MP/HJ</button>
+    <button class="pos-btn" onclick="switchPos('def','co')">CO</button>
+    <button class="pos-btn" onclick="switchPos('def','btn')">BTN</button>
+    <button class="pos-btn" onclick="switchPos('def','sb')">SB</button>
+  </div>
+
+  <!-- EP defence -->
+  <div id="def-ep" class="range-panel active">
+    <div class="legend">
+      <div class="leg-item"><div class="leg-dot" style="background:#2d4ecf"></div> 4-bet (value)</div>
+      <div class="leg-item"><div class="leg-dot" style="background:#5b21b6"></div> 4-bet (bluff/mixed)</div>
+      <div class="leg-item"><div class="leg-dot" style="background:#1a6b4a"></div> Call (flat)</div>
+      <div class="leg-item"><div class="leg-dot" style="background:#7c4a00"></div> Mixed — stack depth/reads</div>
+      <div class="leg-item"><div class="leg-dot" style="background:#1e1e2e;border:1px solid #2e3349"></div> Fold</div>
+    </div>
+    <div class="range-grid">
+      <div class="matrix-wrap">
+        <table class="matrix">
+          <tr><td class="r">AA</td><td class="r">AKs</td><td class="r">AQs</td><td class="c">AJs</td><td class="c">ATs</td><td class="f">A9s</td><td class="f">A8s</td><td class="f">A7s</td><td class="f">A6s</td><td class="s">A5s</td><td class="s">A4s</td><td class="f">A3s</td><td class="f">A2s</td></tr>
+          <tr><td class="r">AKo</td><td class="r">KK</td><td class="r">KQs</td><td class="c">KJs</td><td class="c">KTs</td><td class="f">K9s</td><td class="f">K8s</td><td class="f">K7s</td><td class="f">K6s</td><td class="f">K5s</td><td class="f">K4s</td><td class="f">K3s</td><td class="f">K2s</td></tr>
+          <tr><td class="r">AQo</td><td class="r">KQo</td><td class="r">QQ</td><td class="c">QJs</td><td class="c">QTs</td><td class="f">Q9s</td><td class="f">Q8s</td><td class="f">Q7s</td><td class="f">Q6s</td><td class="f">Q5s</td><td class="f">Q4s</td><td class="f">Q3s</td><td class="f">Q2s</td></tr>
+          <tr><td class="c">AJo</td><td class="c">KJo</td><td class="c">QJo</td><td class="r">JJ</td><td class="c">JTs</td><td class="f">J9s</td><td class="f">J8s</td><td class="f">J7s</td><td class="f">J6s</td><td class="f">J5s</td><td class="f">J4s</td><td class="f">J3s</td><td class="f">J2s</td></tr>
+          <tr><td class="c">ATo</td><td class="m">KTo</td><td class="m">QTo</td><td class="m">JTo</td><td class="r">TT</td><td class="c">T9s</td><td class="f">T8s</td><td class="f">T7s</td><td class="f">T6s</td><td class="f">T5s</td><td class="f">T4s</td><td class="f">T3s</td><td class="f">T2s</td></tr>
+          <tr><td class="f">A9o</td><td class="f">K9o</td><td class="f">Q9o</td><td class="f">J9o</td><td class="f">T9o</td><td class="r">99</td><td class="c">98s</td><td class="f">97s</td><td class="f">96s</td><td class="f">95s</td><td class="f">94s</td><td class="f">93s</td><td class="f">92s</td></tr>
+          <tr><td class="f">A8o</td><td class="f">K8o</td><td class="f">Q8o</td><td class="f">J8o</td><td class="f">T8o</td><td class="f">98o</td><td class="r">88</td><td class="m">87s</td><td class="f">86s</td><td class="f">85s</td><td class="f">84s</td><td class="f">83s</td><td class="f">82s</td></tr>
+          <tr><td class="f">A7o</td><td class="f">K7o</td><td class="f">Q7o</td><td class="f">J7o</td><td class="f">T7o</td><td class="f">97o</td><td class="f">87o</td><td class="r">77</td><td class="f">76s</td><td class="f">75s</td><td class="f">74s</td><td class="f">73s</td><td class="f">72s</td></tr>
+          <tr><td class="f">A6o</td><td class="f">K6o</td><td class="f">Q6o</td><td class="f">J6o</td><td class="f">T6o</td><td class="f">96o</td><td class="f">86o</td><td class="f">76o</td><td class="m">66</td><td class="f">65s</td><td class="f">64s</td><td class="f">63s</td><td class="f">62s</td></tr>
+          <tr><td class="f">A5o</td><td class="f">K5o</td><td class="f">Q5o</td><td class="f">J5o</td><td class="f">T5o</td><td class="f">95o</td><td class="f">85o</td><td class="f">75o</td><td class="f">65o</td><td class="m">55</td><td class="f">54s</td><td class="f">53s</td><td class="f">52s</td></tr>
+          <tr><td class="f">A4o</td><td class="f">K4o</td><td class="f">Q4o</td><td class="f">J4o</td><td class="f">T4o</td><td class="f">94o</td><td class="f">84o</td><td class="f">74o</td><td class="f">64o</td><td class="f">54o</td><td class="f">44</td><td class="f">43s</td><td class="f">42s</td></tr>
+          <tr><td class="f">A3o</td><td class="f">K3o</td><td class="f">Q3o</td><td class="f">J3o</td><td class="f">T3o</td><td class="f">93o</td><td class="f">83o</td><td class="f">73o</td><td class="f">63o</td><td class="f">53o</td><td class="f">43o</td><td class="f">33</td><td class="f">32s</td></tr>
+          <tr><td class="f">A2o</td><td class="f">K2o</td><td class="f">Q2o</td><td class="f">J2o</td><td class="f">T2o</td><td class="f">92o</td><td class="f">82o</td><td class="f">72o</td><td class="f">62o</td><td class="f">52o</td><td class="f">42o</td><td class="f">32o</td><td class="f">22</td></tr>
+        </table>
+      </div>
+      <div class="notes">
+        <div class="notes-title">EP open vs 3-bet — tight defence</div>
+        <div class="note-item"><b>4-bet for value:</b> AA, KK, QQ, JJ (sometimes), AKs, AKo, AQs, AQo — ship it</div>
+        <div class="note-item"><b>4-bet bluffs:</b> A5s, A4s — keep your 4-bet range balanced with blockers</div>
+        <div class="note-item"><b>Call in position:</b> TT, 99, 88, 77, AJs, KQs, QJs, JTs, T9s, 98s</div>
+        <div class="note-item"><b>Call out of position:</b> Tighten further. TT+ and AKs/AQs only vs aggressive 3-bettors.</div>
+        <div class="note-item"><b>Default:</b> When in doubt with hands like KTo, QTo, JTo — fold. They're trap hands OOP vs 3-bets.</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- MP/HJ defence -->
+  <div id="def-mp" class="range-panel">
+    <div class="legend">
+      <div class="leg-item"><div class="leg-dot" style="background:#2d4ecf"></div> 4-bet value</div>
+      <div class="leg-item"><div class="leg-dot" style="background:#5b21b6"></div> 4-bet bluff</div>
+      <div class="leg-item"><div class="leg-dot" style="background:#1a6b4a"></div> Call</div>
+      <div class="leg-item"><div class="leg-dot" style="background:#7c4a00"></div> Mixed</div>
+      <div class="leg-item"><div class="leg-dot" style="background:#1e1e2e;border:1px solid #2e3349"></div> Fold</div>
+    </div>
+    <div class="range-grid">
+      <div class="matrix-wrap">
+        <table class="matrix">
+          <tr><td class="r">AA</td><td class="r">AKs</td><td class="r">AQs</td><td class="r">AJs</td><td class="c">ATs</td><td class="m">A9s</td><td class="f">A8s</td><td class="f">A7s</td><td class="f">A6s</td><td class="s">A5s</td><td class="s">A4s</td><td class="f">A3s</td><td class="f">A2s</td></tr>
+          <tr><td class="r">AKo</td><td class="r">KK</td><td class="r">KQs</td><td class="r">KJs</td><td class="c">KTs</td><td class="f">K9s</td><td class="f">K8s</td><td class="f">K7s</td><td class="f">K6s</td><td class="f">K5s</td><td class="f">K4s</td><td class="f">K3s</td><td class="f">K2s</td></tr>
+          <tr><td class="r">AQo</td><td class="r">KQo</td><td class="r">QQ</td><td class="r">QJs</td><td class="c">QTs</td><td class="f">Q9s</td><td class="f">Q8s</td><td class="f">Q7s</td><td class="f">Q6s</td><td class="f">Q5s</td><td class="f">Q4s</td><td class="f">Q3s</td><td class="f">Q2s</td></tr>
+          <tr><td class="r">AJo</td><td class="r">KJo</td><td class="c">QJo</td><td class="r">JJ</td><td class="c">JTs</td><td class="c">J9s</td><td class="f">J8s</td><td class="f">J7s</td><td class="f">J6s</td><td class="f">J5s</td><td class="f">J4s</td><td class="f">J3s</td><td class="f">J2s</td></tr>
+          <tr><td class="c">ATo</td><td class="c">KTo</td><td class="m">QTo</td><td class="f">JTo</td><td class="r">TT</td><td class="c">T9s</td><td class="c">T8s</td><td class="f">T7s</td><td class="f">T6s</td><td class="f">T5s</td><td class="f">T4s</td><td class="f">T3s</td><td class="f">T2s</td></tr>
+          <tr><td class="f">A9o</td><td class="f">K9o</td><td class="f">Q9o</td><td class="f">J9o</td><td class="f">T9o</td><td class="r">99</td><td class="c">98s</td><td class="c">97s</td><td class="f">96s</td><td class="f">95s</td><td class="f">94s</td><td class="f">93s</td><td class="f">92s</td></tr>
+          <tr><td class="f">A8o</td><td class="f">K8o</td><td class="f">Q8o</td><td class="f">J8o</td><td class="f">T8o</td><td class="f">98o</td><td class="r">88</td><td class="c">87s</td><td class="c">86s</td><td class="f">85s</td><td class="f">84s</td><td class="f">83s</td><td class="f">82s</td></tr>
+          <tr><td class="f">A7o</td><td class="f">K7o</td><td class="f">Q7o</td><td class="f">J7o</td><td class="f">T7o</td><td class="f">97o</td><td class="f">87o</td><td class="r">77</td><td class="c">76s</td><td class="c">75s</td><td class="f">74s</td><td class="f">73s</td><td class="f">72s</td></tr>
+          <tr><td class="f">A6o</td><td class="f">K6o</td><td class="f">Q6o</td><td class="f">J6o</td><td class="f">T6o</td><td class="f">96o</td><td class="f">86o</td><td class="f">76o</td><td class="m">66</td><td class="c">65s</td><td class="f">64s</td><td class="f">63s</td><td class="f">62s</td></tr>
+          <tr><td class="f">A5o</td><td class="f">K5o</td><td class="f">Q5o</td><td class="f">J5o</td><td class="f">T5o</td><td class="f">95o</td><td class="f">85o</td><td class="f">75o</td><td class="f">65o</td><td class="m">55</td><td class="c">54s</td><td class="f">53s</td><td class="f">52s</td></tr>
+          <tr><td class="f">A4o</td><td class="f">K4o</td><td class="f">Q4o</td><td class="f">J4o</td><td class="f">T4o</td><td class="f">94o</td><td class="f">84o</td><td class="f">74o</td><td class="f">64o</td><td class="f">54o</td><td class="m">44</td><td class="f">43s</td><td class="f">42s</td></tr>
+          <tr><td class="f">A3o</td><td class="f">K3o</td><td class="f">Q3o</td><td class="f">J3o</td><td class="f">T3o</td><td class="f">93o</td><td class="f">83o</td><td class="f">73o</td><td class="f">63o</td><td class="f">53o</td><td class="f">43o</td><td class="f">33</td><td class="f">32s</td></tr>
+          <tr><td class="f">A2o</td><td class="f">K2o</td><td class="f">Q2o</td><td class="f">J2o</td><td class="f">T2o</td><td class="f">92o</td><td class="f">82o</td><td class="f">72o</td><td class="f">62o</td><td class="f">52o</td><td class="f">42o</td><td class="f">32o</td><td class="f">22</td></tr>
+        </table>
+      </div>
+      <div class="notes">
+        <div class="notes-title">MP/HJ open vs 3-bet</div>
+        <div class="note-item"><b>4-bet value:</b> AA, KK, QQ, JJ, AKo/s, AQo/s, AJs</div>
+        <div class="note-item"><b>4-bet bluffs:</b> A5s, A4s — blocker hands with equity</div>
+        <div class="note-item"><b>Call:</b> TT–77, ATo, KTo, JTs, T9s–T8s, 98s–97s, 87s–86s, 76s–75s, 65s, 54s</div>
+        <div class="note-item"><b>More callers available:</b> You opened wider so you can defend wider too vs IP 3-bets</div>
+        <div class="note-item"><b>vs OOP 3-bet (blinds):</b> Tighten calling range significantly. TT+, AQs+, suited broadways only.</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- CO defence -->
+  <div id="def-co" class="range-panel">
+    <div class="range-grid">
+      <div class="legend">
+        <div class="leg-item"><div class="leg-dot" style="background:#2d4ecf"></div> 4-bet value</div>
+        <div class="leg-item"><div class="leg-dot" style="background:#5b21b6"></div> 4-bet bluff</div>
+        <div class="leg-item"><div class="leg-dot" style="background:#1a6b4a"></div> Call</div>
+        <div class="leg-item"><div class="leg-dot" style="background:#7c4a00"></div> Mixed</div>
+        <div class="leg-item"><div class="leg-dot" style="background:#1e1e2e;border:1px solid #2e3349"></div> Fold</div>
+      </div>
+      <div class="notes" style="width:100%">
+        <div class="notes-title">CO open vs 3-bet — by 3-bettor position</div>
+        <div class="note-item"><b>vs BTN 3-bet (you're OOP):</b> 4-bet AA/KK/QQ/AKs/AKo. Call TT–88, AQs–AJs, KQs, JTs, T9s. Fold most else including ATo, KQo.</div>
+        <div class="note-item"><b>vs SB/BB 3-bet (you're IP):</b> Much wider call range. Add 77–55, ATs–A9s, KJs–KTs, QJs, 98s–87s–76s–65s. 4-bet bluff A5s/A4s.</div>
+        <div class="note-item"><b>Key principle:</b> Position changes everything. Being IP vs a 3-bet lets you call much wider and realise your equity.</div>
+        <div class="note-item"><b>Danger hands:</b> KQo, QJo, ATo OOP vs 3-bet — these look strong but are difficult to play well. Default fold.</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- BTN defence -->
+  <div id="def-btn" class="range-panel">
+    <div class="notes" style="margin-bottom:12px">
+      <div class="notes-title">BTN open vs 3-bet — you always have position (except vs BB)</div>
+      <div class="note-item"><b>vs SB 3-bet:</b> You're IP. Call very wide — TT–22, all broadway suited, ATs–A2s, KQs–K9s, all suited connectors down to 54s, AJo+, KQo. 4-bet AA/KK/QQ/AKs/AKo + A5s/A4s bluffs.</div>
+      <div class="note-item"><b>vs BB 3-bet:</b> Still IP. Similar wide call range. BB defends wide so their 3-bet range is strong — tighten slightly. TT–33, AJs+, KQs–KTs, QJs–QTs, JTs–54s suited, AKo–AJo.</div>
+      <div class="note-item"><b>4-bet value both cases:</b> AA, KK, QQ, JJ, AKo/s. 4-bet bluffs: A5s, A4s, sometimes A3s.</div>
+      <div class="note-item"><b>Key mindset:</b> From the BTN you're almost always IP vs a 3-bet. Exploit that. Fold EV is low — calling with position and playable hands is almost always better than folding too much.</div>
+    </div>
+  </div>
+
+  <!-- SB defence -->
+  <div id="def-sb" class="range-panel">
+    <div class="notes" style="margin-bottom:12px">
+      <div class="notes-title">SB open vs 3-bet — you're always OOP</div>
+      <div class="note-item"><b>This is your toughest spot.</b> You opened wide and now face a 3-bet OOP with only the BB behind.</div>
+      <div class="note-item"><b>4-bet value:</b> AA, KK, QQ, AKs, AKo. These are clear. Don't slow play AA/KK here.</div>
+      <div class="note-item"><b>4-bet bluffs:</b> A5s, A4s, occasionally suited connectors with blockers (e.g. A3s). Keep your 4-bet range polarised.</div>
+      <div class="note-item"><b>Call range (very tight):</b> JJ, TT, 99, AQs, AJs, KQs, QJs, JTs. That's roughly it vs a solid 3-bettor.</div>
+      <div class="note-item"><b>Fold the rest:</b> Including AQo, KQo, ATo, 88–22. They look playable but lose too much EV OOP with no position to realise equity.</div>
+      <div class="note-item"><b>Lesson:</b> This is why SB opens need to be disciplined — your defence range is brutally limited when 3-bet.</div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════
+     PAGE 3 — KEY REMINDERS
+═══════════════════════════════════════════ -->
+<div id="page-reminders" class="content">
+  <div class="page-header">
+    <div class="page-title">Key Reminders — Read Before You Play</div>
+    <div class="page-sub">Quick mental checklist to keep you disciplined during sessions.</div>
+  </div>
+
+  <div class="sec-title">Before the session</div>
+  <div class="remind-grid">
+    <div class="remind-card"><div class="remind-card-title">Check your mood</div><p>If you're tilted, tired, or emotional — <b>do not play</b>. Log off. Come back tomorrow.</p></div>
+    <div class="remind-card"><div class="remind-card-title">Set your stop-loss</div><p>Decide your max spend <b>before</b> opening a single table. Stick to it no matter what.</p></div>
+    <div class="remind-card"><div class="remind-card-title">Stake check</div><p>BR above $800? <b>$5 games</b> as primary. $10 as occasional shot. BR below $400? Drop to $2s immediately.</p></div>
+  </div>
+
+  <div class="sec-title">During play</div>
+  <div class="remind-grid">
+    <div class="remind-card"><div class="remind-card-title">Cooler vs mistake?</div><p>Before you tilt — ask: was that hand a <b>mathematical cooler</b> or a mistake I made? Only fix mistakes.</p></div>
+    <div class="remind-card"><div class="remind-card-title">Tighten if unsure</div><p>If you're in a marginal spot and unsure — <b>default to fold</b>. Especially in early position.</p></div>
+    <div class="remind-card"><div class="remind-card-title">Position awareness</div><p>Before every open, ask: <b>how many players are left to act?</b> Widen as position improves.</p></div>
+    <div class="remind-card"><div class="remind-card-title">3-bet = slow down</div><p>Facing a 3-bet? <b>Stop. Breathe.</b> Check this guide. Avoid snapping in marginal hands out of ego.</p></div>
+    <div class="remind-card"><div class="remind-card-title">Stack depth matters</div><p>Pairs and suited connectors need <b>deep stacks</b> to setmine. Tighten these at 30BB or less.</p></div>
+  </div>
+
+  <div class="sec-title">After a bad beat</div>
+  <div class="remind-grid">
+    <div class="remind-card"><div class="remind-card-title">5-minute rule</div><p>Take a <b>5 minute break</b> after any big hand — win or loss. Don't make the next decision on adrenaline.</p></div>
+    <div class="remind-card"><div class="remind-card-title">One tournament at a time</div><p>Don't fire into a new tournament to "get it back." <b>Revenge entries = spew.</b></p></div>
+    <div class="remind-card"><div class="remind-card-title">Log it and move on</div><p>Add the hand to your tracker notes. <b>One line is enough.</b> Process it after the session, not during.</p></div>
+  </div>
+</div>
+
+<script>
+function switchPage(id) {
+  document.querySelectorAll('.content').forEach(c => c.classList.remove('active'));
+  document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
+  document.getElementById('page-' + id).classList.add('active');
+  event.target.classList.add('active');
+}
+
+function switchPos(page, pos) {
+  const tabs = document.getElementById(page + '-tabs');
+  if (tabs) tabs.querySelectorAll('.pos-btn').forEach(b => b.classList.remove('active'));
+  document.querySelectorAll('#page-' + (page === 'rfi' ? 'rfi' : 'defence') + ' .range-panel').forEach(p => p.classList.remove('active'));
+  document.getElementById(page + '-' + pos).classList.add('active');
+  event.target.classList.add('active');
+}
+
+function switchRFI(format, pos, btn) {
+  btn.closest('.rfi-opener-tabs').querySelectorAll('.rfi-opener-btn').forEach(function(b) {
+    b.classList.remove('active');
+  });
+  btn.classList.add('active');
+  var prefix = 'vsrfi-' + format + '-';
+  document.querySelectorAll('[id]').forEach(function(el) {
+    if (el.id.indexOf(prefix) === 0) el.classList.remove('active');
+  });
+  var target = document.getElementById('vsrfi-' + format + '-' + pos);
+  if (target) target.classList.add('active');
+}
+
+</script>
+
+<div id="page-vsrfi" class="content">
+  <div class="page-header">
+    <div class="page-title">vs RFI Defence <span class="tag tag-r" style="background:#1e3a8a;color:#93c5fd;font-size:10px;padding:2px 8px;border-radius:4px;margin-left:6px">9-Max</span></div>
+    <div class="page-sub">Facing a raise first-in — what to call, 3-bet for value, 3-bet as a bluff, and always fold. Organised by the opener's position.</div>
+  </div>
+  <div id="vsrfi-tabs-9max" class="rfi-opener-tabs"><button class="rfi-opener-btn active" onclick="switchRFI('9max','utg',this)">vs UTG Open</button><button class="rfi-opener-btn" onclick="switchRFI('9max','utg1',this)">vs UTG+1 Open</button><button class="rfi-opener-btn" onclick="switchRFI('9max','mp',this)">vs MP Open</button><button class="rfi-opener-btn" onclick="switchRFI('9max','hj',this)">vs HJ Open</button><button class="rfi-opener-btn" onclick="switchRFI('9max','co',this)">vs CO Open</button><button class="rfi-opener-btn" onclick="switchRFI('9max','btn',this)">vs BTN Open</button><button class="rfi-opener-btn" onclick="switchRFI('9max','sb',this)">vs SB Open</button></div><div id="vsrfi-9max-utg" class="rfi-panel active"><p class="rfi-pos-label">UTG opens ~14% — very strong range. Respect it.</p><div class="rfi-grid"><div class="rfi-card"><div class="rfi-card-title call">Call (In Position)</div><div class="rfi-hand-list"><span class="h">TT</span><span class="h">99</span><span class="h">88</span><span class="h">77</span><span class="h">AJs</span><span class="h">ATs</span><span class="h">KQs</span><span class="h">QJs</span><span class="h">JTs</span><span class="h">T9s</span><span class="h">98s</span><span class="h">87s</span></div></div><div class="rfi-card"><div class="rfi-card-title call">Call (Out of Position / Blinds)</div><div class="rfi-hand-list"><span class="h">JJ</span><span class="h">TT</span><span class="h">AQs</span><span class="h">KQs</span></div></div><div class="rfi-card"><div class="rfi-card-title vbet">3-Bet for Value</div><div class="rfi-hand-list"><span class="v">AA</span><span class="v">KK</span><span class="v">QQ</span><span class="v">JJ</span><span class="v">AKs</span><span class="v">AKo</span><span class="v">AQs</span><span class="v">AQo</span></div></div><div class="rfi-card"><div class="rfi-card-title bluff">3-Bet Bluffs</div><div class="rfi-hand-list"><span class="b">A5s</span><span class="b">A4s</span></div></div></div><div class="rfi-card" style="margin-bottom:12px"><div class="rfi-card-title fold">Always Fold Facing This Open</div><div class="rfi-hand-list"><span class="f">22-66 (no set odds OOP)</span><span class="f">K9o and below</span><span class="f">Q9o and below</span><span class="f">offsuit connectors</span><span class="f">any suited hand below T8s OOP</span></div></div><div class="rfi-card"><div class="rfi-card-title" style="color:var(--accent2,#f59e0b)">Key Rules</div><div class="rfi-rule"><b>3-bet range is tight and polar.</b> Value: AA–JJ, AKs/o, AQs/o. Bluff: A5s/A4s for blocker balance only.</div><div class="rfi-rule"><b>IP flat range is wider.</b> TT–77, suited connectors down to 87s all play well in position vs UTG.</div><div class="rfi-rule"><b>OOP (blinds) is a fold-heavy spot.</b> Only continue with JJ+, AQs+, AKo. Everything else bleeds chips.</div><div class="rfi-rule"><b>Never cold-call UTG from EP.</b> If UTG opens and you're in UTG+1/MP, 3-bet or fold — flatting adds players behind.</div></div></div><div id="vsrfi-9max-utg1" class="rfi-panel"><p class="rfi-pos-label">UTG+1 opens ~16% — still tight, near-UTG treatment.</p><div class="rfi-grid"><div class="rfi-card"><div class="rfi-card-title call">Call (In Position)</div><div class="rfi-hand-list"><span class="h">TT</span><span class="h">99</span><span class="h">88</span><span class="h">77</span><span class="h">66</span><span class="h">AJs</span><span class="h">ATs</span><span class="h">A9s</span><span class="h">KQs</span><span class="h">KJs</span><span class="h">QJs</span><span class="h">JTs</span><span class="h">T9s</span><span class="h">98s</span><span class="h">87s</span><span class="h">76s</span></div></div><div class="rfi-card"><div class="rfi-card-title call">Call (Out of Position / Blinds)</div><div class="rfi-hand-list"><span class="h">JJ</span><span class="h">TT</span><span class="h">AQs</span><span class="h">AJs</span><span class="h">KQs</span></div></div><div class="rfi-card"><div class="rfi-card-title vbet">3-Bet for Value</div><div class="rfi-hand-list"><span class="v">AA</span><span class="v">KK</span><span class="v">QQ</span><span class="v">JJ</span><span class="v">AKs</span><span class="v">AKo</span><span class="v">AQs</span><span class="v">AQo</span><span class="v">AJs (IP 3-bet)</span></div></div><div class="rfi-card"><div class="rfi-card-title bluff">3-Bet Bluffs</div><div class="rfi-hand-list"><span class="b">A5s</span><span class="b">A4s</span><span class="b">K5s (IP vs btn/co 3-bet back)</span></div></div></div><div class="rfi-card" style="margin-bottom:12px"><div class="rfi-card-title fold">Always Fold Facing This Open</div><div class="rfi-hand-list"><span class="f">22-55</span><span class="f">offsuit hands below ATo</span><span class="f">K9o and below</span><span class="f">any SC below 76s OOP</span></div></div><div class="rfi-card"><div class="rfi-card-title" style="color:var(--accent2,#f59e0b)">Key Rules</div><div class="rfi-rule"><b>Slightly wider than UTG but same framework.</b> Add A9s and 66 to IP flat range.</div><div class="rfi-rule"><b>Cold 4-bet squeeze opportunities increase</b> if UTG+1 opens and CO/BTN calls — now you can squeeze from blinds with a tight polar range.</div><div class="rfi-rule"><b>OOP defence stays tight.</b> JJ+, AQs+, AKo from the blinds. Add AJs as a call if deep.</div></div></div><div id="vsrfi-9max-mp" class="rfi-panel"><p class="rfi-pos-label">MP opens ~20% — more balanced, some speculative hands enter range.</p><div class="rfi-grid"><div class="rfi-card"><div class="rfi-card-title call">Call (In Position)</div><div class="rfi-hand-list"><span class="h">TT</span><span class="h">99</span><span class="h">88</span><span class="h">77</span><span class="h">66</span><span class="h">AJs</span><span class="h">ATs</span><span class="h">A9s</span><span class="h">KQs</span><span class="h">KJs</span><span class="h">KTs</span><span class="h">QJs</span><span class="h">QTs</span><span class="h">JTs</span><span class="h">T9s</span><span class="h">98s</span><span class="h">87s</span><span class="h">76s</span><span class="h">65s</span></div></div><div class="rfi-card"><div class="rfi-card-title call">Call (Out of Position / Blinds)</div><div class="rfi-hand-list"><span class="h">JJ</span><span class="h">TT</span><span class="h">99</span><span class="h">AQs</span><span class="h">AJs</span><span class="h">KQs</span><span class="h">JTs</span></div></div><div class="rfi-card"><div class="rfi-card-title vbet">3-Bet for Value</div><div class="rfi-hand-list"><span class="v">AA</span><span class="v">KK</span><span class="v">QQ</span><span class="v">JJ</span><span class="v">AKs</span><span class="v">AKo</span><span class="v">AQs</span><span class="v">AQo</span></div></div><div class="rfi-card"><div class="rfi-card-title bluff">3-Bet Bluffs</div><div class="rfi-hand-list"><span class="b">A5s</span><span class="b">A4s</span><span class="b">A3s</span><span class="b">76s (IP bluff 3-bet)</span></div></div></div><div class="rfi-card" style="margin-bottom:12px"><div class="rfi-card-title fold">Always Fold Facing This Open</div><div class="rfi-hand-list"><span class="f">22-44</span><span class="f">K9o and below from OOP</span><span class="f">Q9o and below</span><span class="f">offsuit SCs</span></div></div><div class="rfi-card"><div class="rfi-card-title" style="color:var(--accent2,#f59e0b)">Key Rules</div><div class="rfi-rule"><b>Can add 99 as an OOP call now</b> — MP range has enough bluffs to make set-mining viable.</div><div class="rfi-rule"><b>Wider IP flat.</b> Suited connectors down to 65s all call in position — MP has bluffing hands you can exploit.</div><div class="rfi-rule"><b>3-bet bluffs increase slightly.</b> A3s–A5s plus some suited connectors work as 3-bet bluffs IP.</div></div></div><div id="vsrfi-9max-hj" class="rfi-panel"><p class="rfi-pos-label">HJ opens ~24% — noticeably wider, defend more aggressively.</p><div class="rfi-grid"><div class="rfi-card"><div class="rfi-card-title call">Call (In Position)</div><div class="rfi-hand-list"><span class="h">TT</span><span class="h">99</span><span class="h">88</span><span class="h">77</span><span class="h">66</span><span class="h">55</span><span class="h">ATs</span><span class="h">A9s</span><span class="h">A8s</span><span class="h">KQs</span><span class="h">KJs</span><span class="h">KTs</span><span class="h">QJs</span><span class="h">QTs</span><span class="h">Q9s</span><span class="h">JTs</span><span class="h">J9s</span><span class="h">T9s</span><span class="h">T8s</span><span class="h">98s</span><span class="h">97s</span><span class="h">87s</span><span class="h">86s</span><span class="h">76s</span><span class="h">75s</span><span class="h">65s</span><span class="h">54s</span></div></div><div class="rfi-card"><div class="rfi-card-title call">Call (Out of Position / Blinds)</div><div class="rfi-hand-list"><span class="h">JJ</span><span class="h">TT</span><span class="h">99</span><span class="h">88</span><span class="h">AQs</span><span class="h">AJs</span><span class="h">ATs</span><span class="h">KQs</span><span class="h">KJs</span><span class="h">QJs</span><span class="h">JTs</span></div></div><div class="rfi-card"><div class="rfi-card-title vbet">3-Bet for Value</div><div class="rfi-hand-list"><span class="v">AA</span><span class="v">KK</span><span class="v">QQ</span><span class="v">JJ</span><span class="v">AKs</span><span class="v">AKo</span><span class="v">AQs</span><span class="v">AQo</span><span class="v">TT (IP)</span></div></div><div class="rfi-card"><div class="rfi-card-title bluff">3-Bet Bluffs</div><div class="rfi-hand-list"><span class="b">A5s</span><span class="b">A4s</span><span class="b">A3s</span><span class="b">K4s</span><span class="b">65s (IP)</span><span class="b">54s (IP)</span></div></div></div><div class="rfi-card" style="margin-bottom:12px"><div class="rfi-card-title fold">Always Fold Facing This Open</div><div class="rfi-hand-list"><span class="f">22-33 OOP</span><span class="f">K8o and below</span><span class="f">Q8o and below</span><span class="f">offsuit gappers</span></div></div><div class="rfi-card"><div class="rfi-card-title" style="color:var(--accent2,#f59e0b)">Key Rules</div><div class="rfi-rule"><b>Widen OOP defence significantly vs HJ.</b> 88+ and ATs+ are all comfortable calls from BB.</div><div class="rfi-rule"><b>IP flat range is very wide.</b> Almost every suited hand with connectivity is a call. HJ opens with enough bluffs to justify this.</div><div class="rfi-rule"><b>3-bet bluffs become more frequent.</b> Suited Ax hands (A3s–A5s) are standard 3-bet bluffs vs HJ.</div></div></div><div id="vsrfi-9max-co" class="rfi-panel"><p class="rfi-pos-label">CO opens ~30% — wide range, attack it from BTN/blinds.</p><div class="rfi-grid"><div class="rfi-card"><div class="rfi-card-title call">Call (In Position)</div><div class="rfi-hand-list"><span class="h">TT</span><span class="h">99</span><span class="h">88</span><span class="h">77</span><span class="h">66</span><span class="h">55</span><span class="h">44</span><span class="h">ATs</span><span class="h">A9s</span><span class="h">A8s</span><span class="h">A7s</span><span class="h">KQs</span><span class="h">KJs</span><span class="h">KTs</span><span class="h">K9s</span><span class="h">QJs</span><span class="h">QTs</span><span class="h">Q9s</span><span class="h">JTs</span><span class="h">J9s</span><span class="h">J8s</span><span class="h">T9s</span><span class="h">T8s</span><span class="h">98s</span><span class="h">97s</span><span class="h">87s</span><span class="h">86s</span><span class="h">76s</span><span class="h">75s</span><span class="h">65s</span><span class="h">64s</span><span class="h">54s</span><span class="h">53s</span></div></div><div class="rfi-card"><div class="rfi-card-title call">Call (Out of Position / Blinds)</div><div class="rfi-hand-list"><span class="h">JJ</span><span class="h">TT</span><span class="h">99</span><span class="h">88</span><span class="h">77</span><span class="h">AQs</span><span class="h">AJs</span><span class="h">ATs</span><span class="h">A9s</span><span class="h">KQs</span><span class="h">KJs</span><span class="h">QJs</span><span class="h">JTs</span><span class="h">T9s</span></div></div><div class="rfi-card"><div class="rfi-card-title vbet">3-Bet for Value</div><div class="rfi-hand-list"><span class="v">AA</span><span class="v">KK</span><span class="v">QQ</span><span class="v">JJ</span><span class="v">TT (IP)</span><span class="v">AKs</span><span class="v">AKo</span><span class="v">AQs</span><span class="v">AQo</span><span class="v">AJs (IP)</span></div></div><div class="rfi-card"><div class="rfi-card-title bluff">3-Bet Bluffs</div><div class="rfi-hand-list"><span class="b">A5s</span><span class="b">A4s</span><span class="b">A3s</span><span class="b">A2s</span><span class="b">K4s</span><span class="b">K3s</span><span class="b">76s</span><span class="b">65s</span><span class="b">54s</span></div></div></div><div class="rfi-card" style="margin-bottom:12px"><div class="rfi-card-title fold">Always Fold Facing This Open</div><div class="rfi-hand-list"><span class="f">22-33 OOP</span><span class="f">K8o and below OOP</span><span class="f">offsuit unconnected hands</span></div></div><div class="rfi-card"><div class="rfi-card-title" style="color:var(--accent2,#f59e0b)">Key Rules</div><div class="rfi-rule"><b>BTN is the best seat to 3-bet CO.</b> Wide polar 3-bet range — value AA–TT/AK–AJ plus suited Ax bluffs.</div><div class="rfi-rule"><b>BB defends very wide vs CO.</b> Any pair 77+, all suited connectors, suited broadway — CO range is wide enough to justify this.</div><div class="rfi-rule"><b>SB should 3-bet or fold vs CO</b> — flatting OOP with CO still to act is a leak. Keep SB range polar.</div></div></div><div id="vsrfi-9max-btn" class="rfi-panel"><p class="rfi-pos-label">BTN opens ~45% — very wide, 3-bet liberally, call wide from BB.</p><div class="rfi-grid"><div class="rfi-card"><div class="rfi-card-title call">Call (In Position)</div><div class="rfi-hand-list"><span class="h">N/A — you're either in blinds or already acted</span></div></div><div class="rfi-card"><div class="rfi-card-title call">Call (Out of Position / Blinds)</div><div class="rfi-hand-list"><span class="h">Any pair</span><span class="h">Any Ax suited</span><span class="h">KQs-K9s</span><span class="h">QJs-Q9s</span><span class="h">JTs-J8s</span><span class="h">T9s-T7s</span><span class="h">98s-96s</span><span class="h">87s-86s</span><span class="h">76s</span><span class="h">65s</span><span class="h">54s</span><span class="h">AQo-A8o</span><span class="h">KQo-KTo</span><span class="h">QJo-Q9o</span><span class="h">JTo-J9o</span><span class="h">T9o</span></div></div><div class="rfi-card"><div class="rfi-card-title vbet">3-Bet for Value</div><div class="rfi-hand-list"><span class="v">AA</span><span class="v">KK</span><span class="v">QQ</span><span class="v">JJ</span><span class="v">TT</span><span class="v">AKs</span><span class="v">AKo</span><span class="v">AQs</span><span class="v">AQo</span><span class="v">AJs</span></div></div><div class="rfi-card"><div class="rfi-card-title bluff">3-Bet Bluffs</div><div class="rfi-hand-list"><span class="b">A5s-A2s</span><span class="b">K5s-K3s</span><span class="b">65s</span><span class="b">54s</span><span class="b">any two broadway suited</span></div></div></div><div class="rfi-card" style="margin-bottom:12px"><div class="rfi-card-title fold">Always Fold Facing This Open</div><div class="rfi-hand-list"><span class="f">Very little from BB — BTN opens so wide almost any hand defends</span><span class="f">From SB: fold weak offsuit unconnected hands</span></div></div><div class="rfi-card"><div class="rfi-card-title" style="color:var(--accent2,#f59e0b)">Key Rules</div><div class="rfi-rule"><b>BB defends extremely wide vs BTN.</b> BTN opens ~45% so your defence threshold drops significantly. Call with almost any connected or suited hand.</div><div class="rfi-rule"><b>3-bet from BB is powerful.</b> BTN folds a lot to 3-bets. Widen your 3-bet bluff range substantially — any suited Ax, suited connectors, offsuit broadway hands.</div><div class="rfi-rule"><b>SB vs BTN: 3-bet or fold.</b> Flatting SB vs BTN open is a leak — you're OOP vs the widest opener. Keep range polar.</div><div class="rfi-rule"><b>Don't slow-play vs BTN.</b> Their range is wide enough that you get action from worse hands. Raise your strong holdings rather than flat.</div></div></div><div id="vsrfi-9max-sb" class="rfi-panel"><p class="rfi-pos-label">SB opens ~50%+ — widest open, you're IP in BB, defend very wide.</p><div class="rfi-grid"><div class="rfi-card"><div class="rfi-card-title call">Call (In Position)</div><div class="rfi-hand-list"><span class="h">N/A — you are BB, already in position vs SB</span></div></div><div class="rfi-card"><div class="rfi-card-title call">Call (Out of Position / Blinds)</div><div class="rfi-hand-list"><span class="h">Any pair 22+</span><span class="h">All Ax suited</span><span class="h">KQs-K6s</span><span class="h">QJs-Q7s</span><span class="h">JTs-J7s</span><span class="h">T9s-T6s</span><span class="h">98s-96s</span><span class="h">87s-86s</span><span class="h">76s</span><span class="h">65s</span><span class="h">54s</span><span class="h">AKo-A6o</span><span class="h">KQo-K9o</span><span class="h">QJo-Q9o</span><span class="h">JTo-J9o</span><span class="h">T9o-T8o</span><span class="h">98o-97o</span></div></div><div class="rfi-card"><div class="rfi-card-title vbet">3-Bet for Value</div><div class="rfi-hand-list"><span class="v">AA</span><span class="v">KK</span><span class="v">QQ</span><span class="v">JJ</span><span class="v">TT</span><span class="v">99</span><span class="v">AKs</span><span class="v">AKo</span><span class="v">AQs</span><span class="v">AQo</span><span class="v">AJs</span></div></div><div class="rfi-card"><div class="rfi-card-title bluff">3-Bet Bluffs</div><div class="rfi-hand-list"><span class="b">A5s-A2s</span><span class="b">K5s-K3s</span><span class="b">any suited connector</span><span class="b">65s</span><span class="b">54s</span></div></div></div><div class="rfi-card" style="margin-bottom:12px"><div class="rfi-card-title fold">Always Fold Facing This Open</div><div class="rfi-hand-list"><span class="f">Almost nothing — SB opens so wide that BB folding is usually wrong</span><span class="f">Fold only pure trash: 72o, 62o, 32o type hands</span></div></div><div class="rfi-card"><div class="rfi-card-title" style="color:var(--accent2,#f59e0b)">Key Rules</div><div class="rfi-rule"><b>BB vs SB is the widest defence spot in poker.</b> You're IP, SB opens wide, pot odds are favourable — defend nearly everything.</div><div class="rfi-rule"><b>3-bet to build pots with strong hands.</b> Don't just flat JJ/QQ — 3-bet and build the pot. SB will call wide.</div><div class="rfi-rule"><b>Raise frequency from BB is high.</b> Mix plenty of 3-bets into your BB defence — SB's wide range folds often enough to make bluff 3-bets very profitable.</div></div></div>
+</div>
+
+</body>
+</html>

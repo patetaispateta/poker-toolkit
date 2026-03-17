@@ -1,0 +1,720 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>8-Max PKO MTT Range Reference — Rahul</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --bg: #0f1117;
+    --surface: #1a1d27;
+    --surface2: #22263a;
+    --border: #2e3349;
+    --text: #e8eaf0;
+    --muted: #7a7f99;
+    --accent: #6ee7b7;
+    --accent2: #f59e0b;
+    --raise: #4f7cff;
+    --call: #6ee7b7;
+  }
+  body { background: var(--bg); color: var(--text); font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; min-height: 100vh; }
+
+  .nav { position: sticky; top: 0; z-index: 100; background: var(--bg); border-bottom: 1px solid var(--border); padding: 0 16px; display: flex; align-items: center; flex-wrap: wrap; }
+  .nav-title { font-size: 12px; font-weight: 700; color: var(--accent); letter-spacing: 0.05em; text-transform: uppercase; padding: 14px 14px 14px 0; border-right: 1px solid var(--border); margin-right: 4px; white-space: nowrap; }
+  .nav-btn { padding: 12px 14px; font-size: 13px; font-weight: 500; color: var(--muted); background: none; border: none; cursor: pointer; border-bottom: 2px solid transparent; transition: color .15s, border-color .15s; white-space: nowrap; }
+  .nav-btn.active { color: var(--text); border-bottom-color: var(--accent); }
+  .nav-btn:hover:not(.active) { color: var(--text); }
+
+  .content { display: none; padding: 24px 16px 40px; max-width: 920px; margin: 0 auto; }
+  .content.active { display: block; }
+
+  .page-header { margin-bottom: 20px; }
+  .page-title { font-size: 20px; font-weight: 700; margin-bottom: 4px; }
+  .page-sub { font-size: 13px; color: var(--muted); line-height: 1.6; }
+  .pko-badge { display: inline-block; background: #064e3b; color: #6ee7b7; font-size: 10px; font-weight: 700; padding: 2px 8px; border-radius: 4px; text-transform: uppercase; letter-spacing: 0.06em; margin-left: 8px; vertical-align: middle; }
+
+  .info-box { border-radius: 8px; padding: 12px 14px; margin-bottom: 18px; font-size: 12px; line-height: 1.75; }
+  .info-box.green { background: #052e1a; border: 1px solid #065f46; color: #6ee7b7; }
+  .info-box.amber { background: #1a1200; border: 1px solid #7c4a00; color: #fde68a; }
+  .info-box.blue  { background: #0c1a3a; border: 1px solid #1e3a8a; color: #93c5fd; }
+  .info-box b { font-weight: 700; }
+
+  .pos-tabs { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 18px; }
+  .pos-btn { padding: 6px 14px; border-radius: 6px; border: 1px solid var(--border); background: var(--surface); color: var(--muted); font-size: 12px; font-weight: 600; cursor: pointer; transition: all .15s; }
+  .pos-btn.active { background: var(--accent); border-color: var(--accent); color: #052e1a; }
+  .pos-btn:hover:not(.active) { border-color: var(--accent); color: var(--text); }
+
+  .range-panel { display: none; }
+  .range-panel.active { display: block; }
+
+  .range-grid { display: grid; grid-template-columns: auto 1fr; gap: 20px; align-items: start; }
+
+  .matrix-wrap { overflow-x: auto; }
+  .matrix { border-collapse: collapse; }
+  .matrix td { width: 34px; height: 34px; text-align: center; vertical-align: middle; border: 1px solid var(--bg); border-radius: 3px; cursor: default; user-select: none; font-size: 10px; font-weight: 600; }
+  .r  { background: #2d4ecf; color: #c7d4ff; }
+  .c  { background: #1a6b4a; color: #a7f3d0; }
+  .f  { background: #1e1e2e; color: #4a4a6a; }
+  .m  { background: #7c4a00; color: #fde68a; }
+  .s  { background: #5b21b6; color: #ddd6fe; }
+  .bw { background: #065f46; color: #a7f3d0; }  /* bounty-widen call */
+
+  .legend { display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 14px; }
+  .leg-item { display: flex; align-items: center; gap: 5px; font-size: 11px; color: var(--muted); }
+  .leg-dot { width: 12px; height: 12px; border-radius: 2px; flex-shrink: 0; }
+
+  .notes { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 14px 16px; }
+  .notes-title { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; color: var(--accent); margin-bottom: 10px; }
+  .note-item { font-size: 12px; color: var(--text); line-height: 1.65; padding: 5px 0; border-top: 1px solid var(--border); }
+  .note-item:first-of-type { border-top: none; }
+  .note-item b { color: var(--accent); font-weight: 600; }
+  .note-item b.amber { color: var(--accent2); }
+
+  .sec-title { font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.07em; color: var(--muted); margin: 22px 0 12px; padding-bottom: 6px; border-bottom: 1px solid var(--border); }
+
+  /* Bounty EV calculator */
+  .calc-wrap { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 18px; margin-bottom: 20px; }
+  .calc-title { font-size: 13px; font-weight: 700; color: var(--accent); margin-bottom: 14px; }
+  .calc-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 16px; }
+  .calc-field { display: flex; flex-direction: column; gap: 5px; }
+  .calc-label { font-size: 11px; color: var(--muted); font-weight: 500; }
+  .calc-input { padding: 7px 10px; border-radius: 6px; border: 1px solid var(--border); background: var(--surface2); color: var(--text); font-size: 13px; width: 100%; }
+  .calc-result { background: var(--surface2); border-radius: 8px; padding: 12px 14px; font-size: 13px; line-height: 1.8; }
+  .calc-result .verdict { font-size: 15px; font-weight: 700; margin-top: 8px; }
+  .verdict.call { color: #6ee7b7; }
+  .verdict.fold { color: #f87171; }
+  .verdict.marginal { color: #f59e0b; }
+  .calc-btn { padding: 8px 18px; border-radius: 6px; border: 1px solid var(--accent); background: transparent; color: var(--accent); font-size: 13px; font-weight: 600; cursor: pointer; transition: all .15s; margin-top: 4px; }
+  .calc-btn:hover { background: var(--accent); color: #052e1a; }
+
+  /* Scenario cards */
+  .scenario-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 12px; margin-bottom: 20px; }
+  .scenario-card { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 14px 16px; }
+  .scenario-title { font-size: 12px; font-weight: 700; margin-bottom: 6px; }
+  .scenario-title.green { color: var(--accent); }
+  .scenario-title.amber { color: var(--accent2); }
+  .scenario-title.red { color: #f87171; }
+  .scenario-body { font-size: 12px; color: var(--muted); line-height: 1.7; }
+  .scenario-body b { color: var(--text); font-weight: 600; }
+
+  /* Push table */
+  .push-table { width: 100%; border-collapse: collapse; font-size: 12px; margin-bottom: 16px; }
+  .push-table th { background: var(--surface2); color: var(--muted); font-weight: 600; padding: 8px 10px; text-align: left; border-bottom: 1px solid var(--border); font-size: 11px; text-transform: uppercase; letter-spacing: 0.05em; }
+  .push-table td { padding: 8px 10px; border-bottom: 1px solid var(--border); color: var(--text); vertical-align: top; font-size: 12px; line-height: 1.6; }
+  .push-table tr:last-child td { border-bottom: none; }
+  .push-table td:first-child { color: var(--accent); font-weight: 700; white-space: nowrap; }
+  .tag { display: inline-block; padding: 1px 7px; border-radius: 4px; font-size: 10px; font-weight: 700; margin-right: 3px; }
+  .tag-g { background: #052e1a; color: #6ee7b7; }
+  .tag-a { background: #1a1200; color: #fde68a; }
+  .tag-r { background: #1e1e2e; color: #f87171; }
+
+  /* Remind grid */
+  .remind-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 12px; margin-bottom: 20px; }
+  .remind-card { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 14px 16px; }
+  .remind-card-title { font-size: 12px; font-weight: 700; color: var(--accent); margin-bottom: 6px; }
+  .remind-card p { font-size: 12px; color: var(--muted); line-height: 1.65; }
+  .remind-card p b { color: var(--text); font-weight: 600; }
+
+  @media (max-width: 640px) {
+    .range-grid { grid-template-columns: 1fr; }
+    .matrix td { width: 26px; height: 26px; font-size: 8.5px; }
+    .calc-grid { grid-template-columns: 1fr; }
+    .nav-title { display: none; }
+    .nav-btn { padding: 12px 10px; font-size: 11px; }
+  }
+
+/* ── VS RFI shared styles ── */
+.rfi-opener-tabs { display:flex; flex-wrap:wrap; gap:6px; margin-bottom:16px; }
+.rfi-opener-btn { padding:6px 14px; border-radius:6px; border:1px solid var(--border); background:var(--surface); color:var(--muted); font-size:12px; font-weight:600; cursor:pointer; transition:all .15s; }
+.rfi-opener-btn:hover:not(.active) { color:var(--text); }
+.rfi-panel { display:none; }
+.rfi-panel.active { display:block; }
+.rfi-grid { display:grid; grid-template-columns:1fr 1fr; gap:14px; margin-bottom:14px; }
+.rfi-card { background:var(--surface); border:1px solid var(--border); border-radius:10px; padding:13px 15px; }
+.rfi-card-title { font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:0.07em; margin-bottom:10px; }
+.rfi-card-title.call   { color:#6ee7b7; }
+.rfi-card-title.vbet   { color:#60a5fa; }
+.rfi-card-title.bluff  { color:#c084fc; }
+.rfi-card-title.fold   { color:#f87171; }
+.rfi-hand-list { font-size:11.5px; color:var(--text); line-height:1.8; }
+.rfi-hand-list span { display:inline-block; background:var(--surface2); border:1px solid var(--border); border-radius:4px; padding:1px 5px; margin:2px 2px; font-size:10.5px; font-weight:600; }
+.rfi-hand-list span.h  { color:#6ee7b7; border-color:#14532d; background:#052e16; }
+.rfi-hand-list span.v  { color:#93c5fd; border-color:#1e3a8a; background:#0c1a3a; }
+.rfi-hand-list span.b  { color:#ddd6fe; border-color:#4a1d96; background:#2e1065; }
+.rfi-hand-list span.f  { color:#f87171; border-color:#7f1d1d; background:#1a0505; }
+.rfi-pos-label { font-size:11px; color:var(--muted); font-style:italic; margin-bottom:6px; }
+.rfi-rule { font-size:12px; color:var(--text); line-height:1.7; padding:6px 0; border-top:1px solid var(--border); }
+.rfi-rule:first-child { border-top:none; }
+.rfi-rule b { font-weight:600; }
+@media(max-width:600px){ .rfi-grid { grid-template-columns:1fr; } }
+
+.rfi-opener-btn.active { background:#0f6e56; border-color:#0f6e56; color:#fff; }
+</style>
+</head>
+<body>
+
+<div class="nav">
+  <span class="nav-title">8-Max PKO</span>
+  <button class="nav-btn active" onclick="switchPage('rfi', this)">RFI Ranges</button>
+  <button class="nav-btn" onclick="switchPage('defence', this)">vs 3-Bet</button>
+  <button class="nav-btn" onclick="switchPage('bounty', this)">Bounty Calls</button>
+  <button class="nav-btn" onclick="switchPage('scenarios', this)">PKO Scenarios</button>
+  <button class="nav-btn" onclick="switchPage('reminders', this)">Reminders</button>
+<button class="nav-btn" onclick="switchPage('vsrfi')">vs RFI</button>
+</div>
+
+<!-- ═══════════════════════════════════════════
+     PAGE 1 — RFI RANGES
+═══════════════════════════════════════════ -->
+<div id="page-rfi" class="content active">
+  <div class="page-header">
+    <div class="page-title">RFI Ranges <span class="pko-badge">8-Max PKO</span></div>
+    <div class="page-sub">Opening ranges for 8-max PKO. Early-game ranges are nearly identical to vanilla 8-max. PKO adjustments kick in once bounties grow and stacks shorten.</div>
+  </div>
+
+  <div class="info-box green">
+    <b>PKO opening principle:</b> Your RFI range does not change dramatically from vanilla 8-max. The bounty on your opponents' heads doesn't affect how often you should open — it affects how you respond when you're called or 3-bet. Play your normal ranges, adjust post-open.
+  </div>
+
+  <div class="legend">
+    <div class="leg-item"><div class="leg-dot" style="background:#2d4ecf"></div> Open raise</div>
+    <div class="leg-item"><div class="leg-dot" style="background:#7c4a00"></div> Mixed / exploitative</div>
+    <div class="leg-item"><div class="leg-dot" style="background:#5b21b6"></div> Stack/bounty dependent</div>
+    <div class="leg-item"><div class="leg-dot" style="background:#1e1e2e;border:1px solid #2e3349"></div> Fold</div>
+  </div>
+
+  <div class="pos-tabs" id="rfi-tabs">
+    <button class="pos-btn active" onclick="switchPos('rfi', 'utg', this)">UTG</button>
+    <button class="pos-btn" onclick="switchPos('rfi', 'utg1', this)">UTG+1</button>
+    <button class="pos-btn" onclick="switchPos('rfi', 'mp', this)">MP</button>
+    <button class="pos-btn" onclick="switchPos('rfi', 'hj', this)">HJ</button>
+    <button class="pos-btn" onclick="switchPos('rfi', 'co', this)">CO</button>
+    <button class="pos-btn" onclick="switchPos('rfi', 'btn', this)">BTN</button>
+    <button class="pos-btn" onclick="switchPos('rfi', 'sb', this)">SB</button>
+  </div>
+
+  <!-- UTG -->
+  <div id="rfi-utg" class="range-panel active">
+    <div class="range-grid">
+      <div class="matrix-wrap"><table class="matrix">
+        <tr><td class="r">AA</td><td class="r">AKs</td><td class="r">AQs</td><td class="r">AJs</td><td class="r">ATs</td><td class="m">A9s</td><td class="f">A8s</td><td class="f">A7s</td><td class="f">A6s</td><td class="f">A5s</td><td class="f">A4s</td><td class="f">A3s</td><td class="f">A2s</td></tr>
+        <tr><td class="r">AKo</td><td class="r">KK</td><td class="r">KQs</td><td class="r">KJs</td><td class="r">KTs</td><td class="m">K9s</td><td class="f">K8s</td><td class="f">K7s</td><td class="f">K6s</td><td class="f">K5s</td><td class="f">K4s</td><td class="f">K3s</td><td class="f">K2s</td></tr>
+        <tr><td class="r">AQo</td><td class="r">KQo</td><td class="r">QQ</td><td class="r">QJs</td><td class="r">QTs</td><td class="m">Q9s</td><td class="f">Q8s</td><td class="f">Q7s</td><td class="f">Q6s</td><td class="f">Q5s</td><td class="f">Q4s</td><td class="f">Q3s</td><td class="f">Q2s</td></tr>
+        <tr><td class="r">AJo</td><td class="r">KJo</td><td class="r">QJo</td><td class="r">JJ</td><td class="r">JTs</td><td class="m">J9s</td><td class="f">J8s</td><td class="f">J7s</td><td class="f">J6s</td><td class="f">J5s</td><td class="f">J4s</td><td class="f">J3s</td><td class="f">J2s</td></tr>
+        <tr><td class="r">ATo</td><td class="r">KTo</td><td class="r">QTo</td><td class="r">JTo</td><td class="r">TT</td><td class="m">T9s</td><td class="f">T8s</td><td class="f">T7s</td><td class="f">T6s</td><td class="f">T5s</td><td class="f">T4s</td><td class="f">T3s</td><td class="f">T2s</td></tr>
+        <tr><td class="f">A9o</td><td class="f">K9o</td><td class="f">Q9o</td><td class="f">J9o</td><td class="f">T9o</td><td class="r">99</td><td class="m">98s</td><td class="f">97s</td><td class="f">96s</td><td class="f">95s</td><td class="f">94s</td><td class="f">93s</td><td class="f">92s</td></tr>
+        <tr><td class="f">A8o</td><td class="f">K8o</td><td class="f">Q8o</td><td class="f">J8o</td><td class="f">T8o</td><td class="f">98o</td><td class="r">88</td><td class="f">87s</td><td class="f">86s</td><td class="f">85s</td><td class="f">84s</td><td class="f">83s</td><td class="f">82s</td></tr>
+        <tr><td class="f">A7o</td><td class="f">K7o</td><td class="f">Q7o</td><td class="f">J7o</td><td class="f">T7o</td><td class="f">97o</td><td class="f">87o</td><td class="r">77</td><td class="f">76s</td><td class="f">75s</td><td class="f">74s</td><td class="f">73s</td><td class="f">72s</td></tr>
+        <tr><td class="f">A6o</td><td class="f">K6o</td><td class="f">Q6o</td><td class="f">J6o</td><td class="f">T6o</td><td class="f">96o</td><td class="f">86o</td><td class="f">76o</td><td class="m">66</td><td class="f">65s</td><td class="f">64s</td><td class="f">63s</td><td class="f">62s</td></tr>
+        <tr><td class="f">A5o</td><td class="f">K5o</td><td class="f">Q5o</td><td class="f">J5o</td><td class="f">T5o</td><td class="f">95o</td><td class="f">85o</td><td class="f">75o</td><td class="f">65o</td><td class="m">55</td><td class="f">54s</td><td class="f">53s</td><td class="f">52s</td></tr>
+        <tr><td class="f">A4o</td><td class="f">K4o</td><td class="f">Q4o</td><td class="f">J4o</td><td class="f">T4o</td><td class="f">94o</td><td class="f">84o</td><td class="f">74o</td><td class="f">64o</td><td class="f">54o</td><td class="f">44</td><td class="f">43s</td><td class="f">42s</td></tr>
+        <tr><td class="f">A3o</td><td class="f">K3o</td><td class="f">Q3o</td><td class="f">J3o</td><td class="f">T3o</td><td class="f">93o</td><td class="f">83o</td><td class="f">73o</td><td class="f">63o</td><td class="f">53o</td><td class="f">43o</td><td class="f">33</td><td class="f">32s</td></tr>
+        <tr><td class="f">A2o</td><td class="f">K2o</td><td class="f">Q2o</td><td class="f">J2o</td><td class="f">T2o</td><td class="f">92o</td><td class="f">82o</td><td class="f">72o</td><td class="f">62o</td><td class="f">52o</td><td class="f">42o</td><td class="f">32o</td><td class="f">22</td></tr>
+      </table></div>
+      <div class="notes">
+        <div class="notes-title">UTG 8-max PKO (~14% range)</div>
+        <div class="note-item"><b>Same as vanilla 8-max UTG.</b> PKO doesn't change your opening range from early position.</div>
+        <div class="note-item"><b>Core:</b> AA–77, AKo–ATo, KQo–KJo, QJo, JTo, AKs–ATs, KQs–KTs, QJs–QTs, JTs, T9s, 98s</div>
+        <div class="note-item"><b>Mixed:</b> 66, 55, A9s, K9s, Q9s, J9s — open exploitatively vs weak tables</div>
+        <div class="note-item"><b>PKO note:</b> Be aware that callers may widen slightly to attack your bounty. Don't cbet as light.</div>
+        <div class="note-item"><b>Sizing:</b> 2.5x with antes, 3x without.</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- UTG+1 -->
+  <div id="rfi-utg1" class="range-panel">
+    <div class="range-grid">
+      <div class="matrix-wrap"><table class="matrix">
+        <tr><td class="r">AA</td><td class="r">AKs</td><td class="r">AQs</td><td class="r">AJs</td><td class="r">ATs</td><td class="r">A9s</td><td class="m">A8s</td><td class="f">A7s</td><td class="f">A6s</td><td class="m">A5s</td><td class="f">A4s</td><td class="f">A3s</td><td class="f">A2s</td></tr>
+        <tr><td class="r">AKo</td><td class="r">KK</td><td class="r">KQs</td><td class="r">KJs</td><td class="r">KTs</td><td class="m">K9s</td><td class="f">K8s</td><td class="f">K7s</td><td class="f">K6s</td><td class="f">K5s</td><td class="f">K4s</td><td class="f">K3s</td><td class="f">K2s</td></tr>
+        <tr><td class="r">AQo</td><td class="r">KQo</td><td class="r">QQ</td><td class="r">QJs</td><td class="r">QTs</td><td class="m">Q9s</td><td class="f">Q8s</td><td class="f">Q7s</td><td class="f">Q6s</td><td class="f">Q5s</td><td class="f">Q4s</td><td class="f">Q3s</td><td class="f">Q2s</td></tr>
+        <tr><td class="r">AJo</td><td class="r">KJo</td><td class="r">QJo</td><td class="r">JJ</td><td class="r">JTs</td><td class="m">J9s</td><td class="f">J8s</td><td class="f">J7s</td><td class="f">J6s</td><td class="f">J5s</td><td class="f">J4s</td><td class="f">J3s</td><td class="f">J2s</td></tr>
+        <tr><td class="r">ATo</td><td class="r">KTo</td><td class="r">QTo</td><td class="r">JTo</td><td class="r">TT</td><td class="r">T9s</td><td class="f">T8s</td><td class="f">T7s</td><td class="f">T6s</td><td class="f">T5s</td><td class="f">T4s</td><td class="f">T3s</td><td class="f">T2s</td></tr>
+        <tr><td class="f">A9o</td><td class="f">K9o</td><td class="f">Q9o</td><td class="f">J9o</td><td class="f">T9o</td><td class="r">99</td><td class="m">98s</td><td class="f">97s</td><td class="f">96s</td><td class="f">95s</td><td class="f">94s</td><td class="f">93s</td><td class="f">92s</td></tr>
+        <tr><td class="f">A8o</td><td class="f">K8o</td><td class="f">Q8o</td><td class="f">J8o</td><td class="f">T8o</td><td class="f">98o</td><td class="r">88</td><td class="m">87s</td><td class="f">86s</td><td class="f">85s</td><td class="f">84s</td><td class="f">83s</td><td class="f">82s</td></tr>
+        <tr><td class="f">A7o</td><td class="f">K7o</td><td class="f">Q7o</td><td class="f">J7o</td><td class="f">T7o</td><td class="f">97o</td><td class="f">87o</td><td class="r">77</td><td class="m">76s</td><td class="f">75s</td><td class="f">74s</td><td class="f">73s</td><td class="f">72s</td></tr>
+        <tr><td class="f">A6o</td><td class="f">K6o</td><td class="f">Q6o</td><td class="f">J6o</td><td class="f">T6o</td><td class="f">96o</td><td class="f">86o</td><td class="f">76o</td><td class="m">66</td><td class="f">65s</td><td class="f">64s</td><td class="f">63s</td><td class="f">62s</td></tr>
+        <tr><td class="f">A5o</td><td class="f">K5o</td><td class="f">Q5o</td><td class="f">J5o</td><td class="f">T5o</td><td class="f">95o</td><td class="f">85o</td><td class="f">75o</td><td class="f">65o</td><td class="m">55</td><td class="f">54s</td><td class="f">53s</td><td class="f">52s</td></tr>
+        <tr><td class="f">A4o</td><td class="f">K4o</td><td class="f">Q4o</td><td class="f">J4o</td><td class="f">T4o</td><td class="f">94o</td><td class="f">84o</td><td class="f">74o</td><td class="f">64o</td><td class="f">54o</td><td class="m">44</td><td class="f">43s</td><td class="f">42s</td></tr>
+        <tr><td class="f">A3o</td><td class="f">K3o</td><td class="f">Q3o</td><td class="f">J3o</td><td class="f">T3o</td><td class="f">93o</td><td class="f">83o</td><td class="f">73o</td><td class="f">63o</td><td class="f">53o</td><td class="f">43o</td><td class="f">33</td><td class="f">32s</td></tr>
+        <tr><td class="f">A2o</td><td class="f">K2o</td><td class="f">Q2o</td><td class="f">J2o</td><td class="f">T2o</td><td class="f">92o</td><td class="f">82o</td><td class="f">72o</td><td class="f">62o</td><td class="f">52o</td><td class="f">42o</td><td class="f">32o</td><td class="f">22</td></tr>
+      </table></div>
+      <div class="notes">
+        <div class="notes-title">UTG+1 8-max PKO (~16%)</div>
+        <div class="note-item"><b>Adds vs UTG:</b> A8s, A5s, 87s, 76s, 44 mixed</div>
+        <div class="note-item"><b>PKO note:</b> If a short stack with a big bounty is in the blinds, lean toward opening more liberally to attack them post-flop.</div>
+        <div class="note-item"><b>Sizing:</b> 2.5x with antes, 3x without.</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- MP -->
+  <div id="rfi-mp" class="range-panel">
+    <div class="range-grid">
+      <div class="matrix-wrap"><table class="matrix">
+        <tr><td class="r">AA</td><td class="r">AKs</td><td class="r">AQs</td><td class="r">AJs</td><td class="r">ATs</td><td class="r">A9s</td><td class="m">A8s</td><td class="f">A7s</td><td class="f">A6s</td><td class="r">A5s</td><td class="m">A4s</td><td class="m">A3s</td><td class="m">A2s</td></tr>
+        <tr><td class="r">AKo</td><td class="r">KK</td><td class="r">KQs</td><td class="r">KJs</td><td class="r">KTs</td><td class="r">K9s</td><td class="m">K8s</td><td class="f">K7s</td><td class="f">K6s</td><td class="f">K5s</td><td class="f">K4s</td><td class="f">K3s</td><td class="f">K2s</td></tr>
+        <tr><td class="r">AQo</td><td class="r">KQo</td><td class="r">QQ</td><td class="r">QJs</td><td class="r">QTs</td><td class="r">Q9s</td><td class="m">Q8s</td><td class="f">Q7s</td><td class="f">Q6s</td><td class="f">Q5s</td><td class="f">Q4s</td><td class="f">Q3s</td><td class="f">Q2s</td></tr>
+        <tr><td class="r">AJo</td><td class="r">KJo</td><td class="r">QJo</td><td class="r">JJ</td><td class="r">JTs</td><td class="r">J9s</td><td class="m">J8s</td><td class="f">J7s</td><td class="f">J6s</td><td class="f">J5s</td><td class="f">J4s</td><td class="f">J3s</td><td class="f">J2s</td></tr>
+        <tr><td class="r">ATo</td><td class="r">KTo</td><td class="r">QTo</td><td class="r">JTo</td><td class="r">TT</td><td class="r">T9s</td><td class="m">T8s</td><td class="f">T7s</td><td class="f">T6s</td><td class="f">T5s</td><td class="f">T4s</td><td class="f">T3s</td><td class="f">T2s</td></tr>
+        <tr><td class="f">A9o</td><td class="f">K9o</td><td class="f">Q9o</td><td class="f">J9o</td><td class="f">T9o</td><td class="r">99</td><td class="r">98s</td><td class="m">97s</td><td class="f">96s</td><td class="f">95s</td><td class="f">94s</td><td class="f">93s</td><td class="f">92s</td></tr>
+        <tr><td class="f">A8o</td><td class="f">K8o</td><td class="f">Q8o</td><td class="f">J8o</td><td class="f">T8o</td><td class="f">98o</td><td class="r">88</td><td class="r">87s</td><td class="m">86s</td><td class="f">85s</td><td class="f">84s</td><td class="f">83s</td><td class="f">82s</td></tr>
+        <tr><td class="f">A7o</td><td class="f">K7o</td><td class="f">Q7o</td><td class="f">J7o</td><td class="f">T7o</td><td class="f">97o</td><td class="f">87o</td><td class="r">77</td><td class="r">76s</td><td class="m">75s</td><td class="f">74s</td><td class="f">73s</td><td class="f">72s</td></tr>
+        <tr><td class="f">A6o</td><td class="f">K6o</td><td class="f">Q6o</td><td class="f">J6o</td><td class="f">T6o</td><td class="f">96o</td><td class="f">86o</td><td class="f">76o</td><td class="r">66</td><td class="m">65s</td><td class="m">64s</td><td class="f">63s</td><td class="f">62s</td></tr>
+        <tr><td class="f">A5o</td><td class="f">K5o</td><td class="f">Q5o</td><td class="f">J5o</td><td class="f">T5o</td><td class="f">95o</td><td class="f">85o</td><td class="f">75o</td><td class="f">65o</td><td class="r">55</td><td class="m">54s</td><td class="f">53s</td><td class="f">52s</td></tr>
+        <tr><td class="f">A4o</td><td class="f">K4o</td><td class="f">Q4o</td><td class="f">J4o</td><td class="f">T4o</td><td class="f">94o</td><td class="f">84o</td><td class="f">74o</td><td class="f">64o</td><td class="f">54o</td><td class="m">44</td><td class="f">43s</td><td class="f">42s</td></tr>
+        <tr><td class="f">A3o</td><td class="f">K3o</td><td class="f">Q3o</td><td class="f">J3o</td><td class="f">T3o</td><td class="f">93o</td><td class="f">83o</td><td class="f">73o</td><td class="f">63o</td><td class="f">53o</td><td class="f">43o</td><td class="f">33</td><td class="f">32s</td></tr>
+        <tr><td class="f">A2o</td><td class="f">K2o</td><td class="f">Q2o</td><td class="f">J2o</td><td class="f">T2o</td><td class="f">92o</td><td class="f">82o</td><td class="f">72o</td><td class="f">62o</td><td class="f">52o</td><td class="f">42o</td><td class="f">32o</td><td class="f">22</td></tr>
+      </table></div>
+      <div class="notes">
+        <div class="notes-title">MP 8-max PKO (~20%)</div>
+        <div class="note-item"><b>Adds vs UTG+1:</b> A9s, K8s, Q8s–Q9s, J8s–J9s, T8s, 97s, 86s, 75s, 65s–64s, 54s, A2s–A5s wheel draws</div>
+        <div class="note-item"><b>PKO note:</b> Bounty-rich short stacks in the blinds justify opening slightly wider here — you have position and bounty equity.</div>
+        <div class="note-item"><b>Sizing:</b> 2.5x with antes.</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- HJ -->
+  <div id="rfi-hj" class="range-panel">
+    <div class="range-grid">
+      <div class="matrix-wrap"><table class="matrix">
+        <tr><td class="r">AA</td><td class="r">AKs</td><td class="r">AQs</td><td class="r">AJs</td><td class="r">ATs</td><td class="r">A9s</td><td class="r">A8s</td><td class="m">A7s</td><td class="m">A6s</td><td class="r">A5s</td><td class="r">A4s</td><td class="r">A3s</td><td class="r">A2s</td></tr>
+        <tr><td class="r">AKo</td><td class="r">KK</td><td class="r">KQs</td><td class="r">KJs</td><td class="r">KTs</td><td class="r">K9s</td><td class="r">K8s</td><td class="m">K7s</td><td class="f">K6s</td><td class="f">K5s</td><td class="f">K4s</td><td class="f">K3s</td><td class="f">K2s</td></tr>
+        <tr><td class="r">AQo</td><td class="r">KQo</td><td class="r">QQ</td><td class="r">QJs</td><td class="r">QTs</td><td class="r">Q9s</td><td class="r">Q8s</td><td class="m">Q7s</td><td class="f">Q6s</td><td class="f">Q5s</td><td class="f">Q4s</td><td class="f">Q3s</td><td class="f">Q2s</td></tr>
+        <tr><td class="r">AJo</td><td class="r">KJo</td><td class="r">QJo</td><td class="r">JJ</td><td class="r">JTs</td><td class="r">J9s</td><td class="r">J8s</td><td class="m">J7s</td><td class="f">J6s</td><td class="f">J5s</td><td class="f">J4s</td><td class="f">J3s</td><td class="f">J2s</td></tr>
+        <tr><td class="r">ATo</td><td class="r">KTo</td><td class="r">QTo</td><td class="r">JTo</td><td class="r">TT</td><td class="r">T9s</td><td class="r">T8s</td><td class="m">T7s</td><td class="f">T6s</td><td class="f">T5s</td><td class="f">T4s</td><td class="f">T3s</td><td class="f">T2s</td></tr>
+        <tr><td class="m">A9o</td><td class="f">K9o</td><td class="f">Q9o</td><td class="f">J9o</td><td class="f">T9o</td><td class="r">99</td><td class="r">98s</td><td class="r">97s</td><td class="m">96s</td><td class="f">95s</td><td class="f">94s</td><td class="f">93s</td><td class="f">92s</td></tr>
+        <tr><td class="f">A8o</td><td class="f">K8o</td><td class="f">Q8o</td><td class="f">J8o</td><td class="f">T8o</td><td class="f">98o</td><td class="r">88</td><td class="r">87s</td><td class="r">86s</td><td class="m">85s</td><td class="f">84s</td><td class="f">83s</td><td class="f">82s</td></tr>
+        <tr><td class="f">A7o</td><td class="f">K7o</td><td class="f">Q7o</td><td class="f">J7o</td><td class="f">T7o</td><td class="f">97o</td><td class="f">87o</td><td class="r">77</td><td class="r">76s</td><td class="r">75s</td><td class="m">74s</td><td class="f">73s</td><td class="f">72s</td></tr>
+        <tr><td class="f">A6o</td><td class="f">K6o</td><td class="f">Q6o</td><td class="f">J6o</td><td class="f">T6o</td><td class="f">96o</td><td class="f">86o</td><td class="f">76o</td><td class="r">66</td><td class="r">65s</td><td class="r">64s</td><td class="m">63s</td><td class="f">62s</td></tr>
+        <tr><td class="f">A5o</td><td class="f">K5o</td><td class="f">Q5o</td><td class="f">J5o</td><td class="f">T5o</td><td class="f">95o</td><td class="f">85o</td><td class="f">75o</td><td class="f">65o</td><td class="r">55</td><td class="r">54s</td><td class="m">53s</td><td class="f">52s</td></tr>
+        <tr><td class="f">A4o</td><td class="f">K4o</td><td class="f">Q4o</td><td class="f">J4o</td><td class="f">T4o</td><td class="f">94o</td><td class="f">84o</td><td class="f">74o</td><td class="f">64o</td><td class="f">54o</td><td class="r">44</td><td class="m">43s</td><td class="f">42s</td></tr>
+        <tr><td class="f">A3o</td><td class="f">K3o</td><td class="f">Q3o</td><td class="f">J3o</td><td class="f">T3o</td><td class="f">93o</td><td class="f">83o</td><td class="f">73o</td><td class="f">63o</td><td class="f">53o</td><td class="f">43o</td><td class="m">33</td><td class="f">32s</td></tr>
+        <tr><td class="f">A2o</td><td class="f">K2o</td><td class="f">Q2o</td><td class="f">J2o</td><td class="f">T2o</td><td class="f">92o</td><td class="f">82o</td><td class="f">72o</td><td class="f">62o</td><td class="f">52o</td><td class="f">42o</td><td class="f">32o</td><td class="f">22</td></tr>
+      </table></div>
+      <div class="notes">
+        <div class="notes-title">HJ 8-max PKO (~24%)</div>
+        <div class="note-item"><b>Adds vs MP:</b> A8s, K8s, Q8s, J8s, T8s, 96s, 85s, 74s, 63s, 53s, 43s, 33 mixed</div>
+        <div class="note-item"><b>A9o:</b> Mixed open — widen vs passive tables or when big bounty short stacks are in blinds.</div>
+        <div class="note-item"><b>Sizing:</b> 2.5x with antes.</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- CO -->
+  <div id="rfi-co" class="range-panel">
+    <div class="range-grid">
+      <div class="matrix-wrap"><table class="matrix">
+        <tr><td class="r">AA</td><td class="r">AKs</td><td class="r">AQs</td><td class="r">AJs</td><td class="r">ATs</td><td class="r">A9s</td><td class="r">A8s</td><td class="r">A7s</td><td class="r">A6s</td><td class="r">A5s</td><td class="r">A4s</td><td class="r">A3s</td><td class="r">A2s</td></tr>
+        <tr><td class="r">AKo</td><td class="r">KK</td><td class="r">KQs</td><td class="r">KJs</td><td class="r">KTs</td><td class="r">K9s</td><td class="r">K8s</td><td class="r">K7s</td><td class="m">K6s</td><td class="f">K5s</td><td class="f">K4s</td><td class="f">K3s</td><td class="f">K2s</td></tr>
+        <tr><td class="r">AQo</td><td class="r">KQo</td><td class="r">QQ</td><td class="r">QJs</td><td class="r">QTs</td><td class="r">Q9s</td><td class="r">Q8s</td><td class="r">Q7s</td><td class="m">Q6s</td><td class="f">Q5s</td><td class="f">Q4s</td><td class="f">Q3s</td><td class="f">Q2s</td></tr>
+        <tr><td class="r">AJo</td><td class="r">KJo</td><td class="r">QJo</td><td class="r">JJ</td><td class="r">JTs</td><td class="r">J9s</td><td class="r">J8s</td><td class="r">J7s</td><td class="m">J6s</td><td class="f">J5s</td><td class="f">J4s</td><td class="f">J3s</td><td class="f">J2s</td></tr>
+        <tr><td class="r">ATo</td><td class="r">KTo</td><td class="r">QTo</td><td class="r">JTo</td><td class="r">TT</td><td class="r">T9s</td><td class="r">T8s</td><td class="r">T7s</td><td class="m">T6s</td><td class="f">T5s</td><td class="f">T4s</td><td class="f">T3s</td><td class="f">T2s</td></tr>
+        <tr><td class="r">A9o</td><td class="m">K9o</td><td class="m">Q9o</td><td class="m">J9o</td><td class="f">T9o</td><td class="r">99</td><td class="r">98s</td><td class="r">97s</td><td class="r">96s</td><td class="m">95s</td><td class="f">94s</td><td class="f">93s</td><td class="f">92s</td></tr>
+        <tr><td class="r">A8o</td><td class="m">K8o</td><td class="m">Q8o</td><td class="m">J8o</td><td class="f">T8o</td><td class="f">98o</td><td class="r">88</td><td class="r">87s</td><td class="r">86s</td><td class="r">85s</td><td class="m">84s</td><td class="f">83s</td><td class="f">82s</td></tr>
+        <tr><td class="m">A7o</td><td class="f">K7o</td><td class="f">Q7o</td><td class="f">J7o</td><td class="f">T7o</td><td class="f">97o</td><td class="f">87o</td><td class="r">77</td><td class="r">76s</td><td class="r">75s</td><td class="r">74s</td><td class="m">73s</td><td class="f">72s</td></tr>
+        <tr><td class="f">A6o</td><td class="f">K6o</td><td class="f">Q6o</td><td class="f">J6o</td><td class="f">T6o</td><td class="f">96o</td><td class="f">86o</td><td class="f">76o</td><td class="r">66</td><td class="r">65s</td><td class="r">64s</td><td class="r">63s</td><td class="m">62s</td></tr>
+        <tr><td class="f">A5o</td><td class="f">K5o</td><td class="f">Q5o</td><td class="f">J5o</td><td class="f">T5o</td><td class="f">95o</td><td class="f">85o</td><td class="f">75o</td><td class="f">65o</td><td class="r">55</td><td class="r">54s</td><td class="r">53s</td><td class="m">52s</td></tr>
+        <tr><td class="f">A4o</td><td class="f">K4o</td><td class="f">Q4o</td><td class="f">J4o</td><td class="f">T4o</td><td class="f">94o</td><td class="f">84o</td><td class="f">74o</td><td class="f">64o</td><td class="f">54o</td><td class="r">44</td><td class="r">43s</td><td class="m">42s</td></tr>
+        <tr><td class="f">A3o</td><td class="f">K3o</td><td class="f">Q3o</td><td class="f">J3o</td><td class="f">T3o</td><td class="f">93o</td><td class="f">83o</td><td class="f">73o</td><td class="f">63o</td><td class="f">53o</td><td class="f">43o</td><td class="r">33</td><td class="m">32s</td></tr>
+        <tr><td class="f">A2o</td><td class="f">K2o</td><td class="f">Q2o</td><td class="f">J2o</td><td class="f">T2o</td><td class="f">92o</td><td class="f">82o</td><td class="f">72o</td><td class="f">62o</td><td class="f">52o</td><td class="f">42o</td><td class="f">32o</td><td class="m">22</td></tr>
+      </table></div>
+      <div class="notes">
+        <div class="notes-title">CO 8-max PKO (~30%)</div>
+        <div class="note-item"><b>All Ax suited, K7s+, Q7s+, J7s+, T7s+:</b> Standard opens</div>
+        <div class="note-item"><b>Offsuit adds:</b> A9o–A7o, K8o–K9o, Q8o–Q9o, J8o–J9o mixed, A8o</div>
+        <div class="note-item"><b>PKO note:</b> When a large-bounty short stack is in the blinds, opening CO with slightly weaker hands is justified — bounty equity adds to your EV.</div>
+        <div class="note-item"><b>Sizing:</b> 2.2–2.5x with antes.</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- BTN -->
+  <div id="rfi-btn" class="range-panel">
+    <div class="range-grid">
+      <div class="matrix-wrap"><table class="matrix">
+        <tr><td class="r">AA</td><td class="r">AKs</td><td class="r">AQs</td><td class="r">AJs</td><td class="r">ATs</td><td class="r">A9s</td><td class="r">A8s</td><td class="r">A7s</td><td class="r">A6s</td><td class="r">A5s</td><td class="r">A4s</td><td class="r">A3s</td><td class="r">A2s</td></tr>
+        <tr><td class="r">AKo</td><td class="r">KK</td><td class="r">KQs</td><td class="r">KJs</td><td class="r">KTs</td><td class="r">K9s</td><td class="r">K8s</td><td class="r">K7s</td><td class="r">K6s</td><td class="r">K5s</td><td class="r">K4s</td><td class="r">K3s</td><td class="r">K2s</td></tr>
+        <tr><td class="r">AQo</td><td class="r">KQo</td><td class="r">QQ</td><td class="r">QJs</td><td class="r">QTs</td><td class="r">Q9s</td><td class="r">Q8s</td><td class="r">Q7s</td><td class="r">Q6s</td><td class="r">Q5s</td><td class="r">Q4s</td><td class="r">Q3s</td><td class="r">Q2s</td></tr>
+        <tr><td class="r">AJo</td><td class="r">KJo</td><td class="r">QJo</td><td class="r">JJ</td><td class="r">JTs</td><td class="r">J9s</td><td class="r">J8s</td><td class="r">J7s</td><td class="r">J6s</td><td class="r">J5s</td><td class="r">J4s</td><td class="r">J3s</td><td class="r">J2s</td></tr>
+        <tr><td class="r">ATo</td><td class="r">KTo</td><td class="r">QTo</td><td class="r">JTo</td><td class="r">TT</td><td class="r">T9s</td><td class="r">T8s</td><td class="r">T7s</td><td class="r">T6s</td><td class="r">T5s</td><td class="r">T4s</td><td class="r">T3s</td><td class="r">T2s</td></tr>
+        <tr><td class="r">A9o</td><td class="r">K9o</td><td class="r">Q9o</td><td class="r">J9o</td><td class="r">T9o</td><td class="r">99</td><td class="r">98s</td><td class="r">97s</td><td class="r">96s</td><td class="r">95s</td><td class="r">94s</td><td class="r">93s</td><td class="r">92s</td></tr>
+        <tr><td class="r">A8o</td><td class="r">K8o</td><td class="r">Q8o</td><td class="r">J8o</td><td class="r">T8o</td><td class="f">98o</td><td class="r">88</td><td class="r">87s</td><td class="r">86s</td><td class="r">85s</td><td class="r">84s</td><td class="r">83s</td><td class="r">82s</td></tr>
+        <tr><td class="r">A7o</td><td class="r">K7o</td><td class="r">Q7o</td><td class="r">J7o</td><td class="r">T7o</td><td class="r">97o</td><td class="f">87o</td><td class="r">77</td><td class="r">76s</td><td class="r">75s</td><td class="r">74s</td><td class="r">73s</td><td class="r">72s</td></tr>
+        <tr><td class="r">A6o</td><td class="r">K6o</td><td class="r">Q6o</td><td class="r">J6o</td><td class="r">T6o</td><td class="r">96o</td><td class="r">86o</td><td class="f">76o</td><td class="r">66</td><td class="r">65s</td><td class="r">64s</td><td class="r">63s</td><td class="r">62s</td></tr>
+        <tr><td class="r">A5o</td><td class="r">K5o</td><td class="r">Q5o</td><td class="r">J5o</td><td class="r">T5o</td><td class="r">95o</td><td class="r">85o</td><td class="r">75o</td><td class="f">65o</td><td class="r">55</td><td class="r">54s</td><td class="r">53s</td><td class="r">52s</td></tr>
+        <tr><td class="r">A4o</td><td class="r">K4o</td><td class="r">Q4o</td><td class="r">J4o</td><td class="r">T4o</td><td class="r">94o</td><td class="r">84o</td><td class="f">74o</td><td class="f">64o</td><td class="f">54o</td><td class="r">44</td><td class="r">43s</td><td class="r">42s</td></tr>
+        <tr><td class="r">A3o</td><td class="r">K3o</td><td class="r">Q3o</td><td class="r">J3o</td><td class="r">T3o</td><td class="r">93o</td><td class="r">83o</td><td class="f">73o</td><td class="f">63o</td><td class="f">53o</td><td class="f">43o</td><td class="r">33</td><td class="r">32s</td></tr>
+        <tr><td class="r">A2o</td><td class="r">K2o</td><td class="r">Q2o</td><td class="r">J2o</td><td class="r">T2o</td><td class="r">92o</td><td class="r">82o</td><td class="f">72o</td><td class="f">62o</td><td class="f">52o</td><td class="f">42o</td><td class="f">32o</td><td class="r">22</td></tr>
+      </table></div>
+      <div class="notes">
+        <div class="notes-title">BTN 8-max PKO (~45%)</div>
+        <div class="note-item"><b>Open nearly everything.</b> Position + bounty opportunity on blinds = wide range justified.</div>
+        <div class="note-item"><b>PKO bonus:</b> If SB or BB is a short stack with a large bounty, lean toward the wider end of BTN opens — you want to be the one putting pressure on them.</div>
+        <div class="note-item"><b>Sizing:</b> 2.2x. Small enough to steal light, big enough to deny easy calls.</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- SB -->
+  <div id="rfi-sb" class="range-panel">
+    <div class="notes" style="margin-bottom:14px">
+      <div class="notes-title">SB 8-max PKO — vs BB only</div>
+      <div class="note-item"><b>Open range ~50%+:</b> All pairs, all Ax, all Kx suited, Qx/Jx/Tx suited, all offsuit broadways, K8o+, Q9o+</div>
+      <div class="note-item"><b>Never limp SB:</b> Raise or fold. Always.</div>
+      <div class="note-item"><b>PKO note:</b> If BB has a big bounty, open even wider and be more inclined to barrel when they fold equity is high. If BB has NO bounty, tighten slightly — pure chip EV game.</div>
+      <div class="note-item"><b>Sizing:</b> 3x to maximise fold equity and make BB's defence uncomfortable.</div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════
+     PAGE 2 — VS 3-BET
+═══════════════════════════════════════════ -->
+<div id="page-defence" class="content">
+  <div class="page-header">
+    <div class="page-title">vs 3-Bet Defence <span class="pko-badge">8-Max PKO</span></div>
+    <div class="page-sub">PKO changes 3-bet dynamics in both directions. Opponents 3-bet wider to attack your bounty. You should 3-bet less as a bluff vs players who will call wide for your bounty.</div>
+  </div>
+
+  <div class="info-box amber">
+    <b>Key PKO shift:</b> Opponents will call your 4-bets and shoves wider than vanilla because your bounty overlay makes it profitable. This means your 4-bet bluff frequency should come down — lean toward value 4-bets more than in vanilla MTTs. Conversely, when YOU are 3-betting, widen your value range slightly because you'll get called lighter.
+  </div>
+
+  <div class="pos-tabs" id="def-tabs">
+    <button class="pos-btn active" onclick="switchPos('def', 'ep', this)">EP open</button>
+    <button class="pos-btn" onclick="switchPos('def', 'mp', this)">MP/HJ open</button>
+    <button class="pos-btn" onclick="switchPos('def', 'co', this)">CO open</button>
+    <button class="pos-btn" onclick="switchPos('def', 'btn', this)">BTN open</button>
+    <button class="pos-btn" onclick="switchPos('def', 'sb', this)">SB open</button>
+  </div>
+
+  <div id="def-ep" class="range-panel active">
+    <div class="legend">
+      <div class="leg-item"><div class="leg-dot" style="background:#2d4ecf"></div> 4-bet value</div>
+      <div class="leg-item"><div class="leg-dot" style="background:#5b21b6"></div> 4-bet bluff (sparingly in PKO)</div>
+      <div class="leg-item"><div class="leg-dot" style="background:#1a6b4a"></div> Call (IP)</div>
+      <div class="leg-item"><div class="leg-dot" style="background:#1e1e2e;border:1px solid #2e3349"></div> Fold</div>
+    </div>
+    <div class="range-grid">
+      <div class="matrix-wrap"><table class="matrix">
+        <tr><td class="r">AA</td><td class="r">AKs</td><td class="r">AQs</td><td class="c">AJs</td><td class="f">ATs</td><td class="f">A9s</td><td class="f">A8s</td><td class="f">A7s</td><td class="f">A6s</td><td class="s">A5s</td><td class="s">A4s</td><td class="f">A3s</td><td class="f">A2s</td></tr>
+        <tr><td class="r">AKo</td><td class="r">KK</td><td class="r">KQs</td><td class="c">KJs</td><td class="f">KTs</td><td class="f">K9s</td><td class="f">K8s</td><td class="f">K7s</td><td class="f">K6s</td><td class="f">K5s</td><td class="f">K4s</td><td class="f">K3s</td><td class="f">K2s</td></tr>
+        <tr><td class="r">AQo</td><td class="r">KQo</td><td class="r">QQ</td><td class="c">QJs</td><td class="f">QTs</td><td class="f">Q9s</td><td class="f">Q8s</td><td class="f">Q7s</td><td class="f">Q6s</td><td class="f">Q5s</td><td class="f">Q4s</td><td class="f">Q3s</td><td class="f">Q2s</td></tr>
+        <tr><td class="f">AJo</td><td class="f">KJo</td><td class="f">QJo</td><td class="r">JJ</td><td class="c">JTs</td><td class="f">J9s</td><td class="f">J8s</td><td class="f">J7s</td><td class="f">J6s</td><td class="f">J5s</td><td class="f">J4s</td><td class="f">J3s</td><td class="f">J2s</td></tr>
+        <tr><td class="f">ATo</td><td class="f">KTo</td><td class="f">QTo</td><td class="f">JTo</td><td class="r">TT</td><td class="c">T9s</td><td class="f">T8s</td><td class="f">T7s</td><td class="f">T6s</td><td class="f">T5s</td><td class="f">T4s</td><td class="f">T3s</td><td class="f">T2s</td></tr>
+        <tr><td class="f">A9o</td><td class="f">K9o</td><td class="f">Q9o</td><td class="f">J9o</td><td class="f">T9o</td><td class="r">99</td><td class="c">98s</td><td class="f">97s</td><td class="f">96s</td><td class="f">95s</td><td class="f">94s</td><td class="f">93s</td><td class="f">92s</td></tr>
+        <tr><td class="f">A8o</td><td class="f">K8o</td><td class="f">Q8o</td><td class="f">J8o</td><td class="f">T8o</td><td class="f">98o</td><td class="r">88</td><td class="f">87s</td><td class="f">86s</td><td class="f">85s</td><td class="f">84s</td><td class="f">83s</td><td class="f">82s</td></tr>
+        <tr><td class="f">A7o</td><td class="f">K7o</td><td class="f">Q7o</td><td class="f">J7o</td><td class="f">T7o</td><td class="f">97o</td><td class="f">87o</td><td class="r">77</td><td class="f">76s</td><td class="f">75s</td><td class="f">74s</td><td class="f">73s</td><td class="f">72s</td></tr>
+        <tr><td class="f">A6o</td><td class="f">K6o</td><td class="f">Q6o</td><td class="f">J6o</td><td class="f">T6o</td><td class="f">96o</td><td class="f">86o</td><td class="f">76o</td><td class="m">66</td><td class="f">65s</td><td class="f">64s</td><td class="f">63s</td><td class="f">62s</td></tr>
+        <tr><td class="f">A5o</td><td class="f">K5o</td><td class="f">Q5o</td><td class="f">J5o</td><td class="f">T5o</td><td class="f">95o</td><td class="f">85o</td><td class="f">75o</td><td class="f">65o</td><td class="m">55</td><td class="f">54s</td><td class="f">53s</td><td class="f">52s</td></tr>
+        <tr><td class="f">A4o</td><td class="f">K4o</td><td class="f">Q4o</td><td class="f">J4o</td><td class="f">T4o</td><td class="f">94o</td><td class="f">84o</td><td class="f">74o</td><td class="f">64o</td><td class="f">54o</td><td class="f">44</td><td class="f">43s</td><td class="f">42s</td></tr>
+        <tr><td class="f">A3o</td><td class="f">K3o</td><td class="f">Q3o</td><td class="f">J3o</td><td class="f">T3o</td><td class="f">93o</td><td class="f">83o</td><td class="f">73o</td><td class="f">63o</td><td class="f">53o</td><td class="f">43o</td><td class="f">33</td><td class="f">32s</td></tr>
+        <tr><td class="f">A2o</td><td class="f">K2o</td><td class="f">Q2o</td><td class="f">J2o</td><td class="f">T2o</td><td class="f">92o</td><td class="f">82o</td><td class="f">72o</td><td class="f">62o</td><td class="f">52o</td><td class="f">42o</td><td class="f">32o</td><td class="f">22</td></tr>
+      </table></div>
+      <div class="notes">
+        <div class="notes-title">EP open vs 3-bet — PKO adjustments</div>
+        <div class="note-item"><b>4-bet value:</b> AA, KK, QQ, JJ, AKo/s, AQo/s — same as vanilla</div>
+        <div class="note-item"><b>4-bet bluffs:</b> <b class="amber">Use sparingly.</b> A5s/A4s only. In PKO your bluff 4-bets get called wider — reduce bluff frequency vs bounty hunters.</div>
+        <div class="note-item"><b>Call IP:</b> TT, 99, 88, 77, AJs, KQs, QJs, JTs, T9s, 98s</div>
+        <div class="note-item"><b>OOP:</b> Tighten further. TT+, AKs/AQs only vs aggressive 3-bettors who will call your 4-bets wide for your bounty.</div>
+        <div class="note-item"><b>Fold:</b> ATo, KQo, QJo, 66–55 — standard folds, PKO doesn't change this.</div>
+      </div>
+    </div>
+  </div>
+
+  <div id="def-mp" class="range-panel">
+    <div class="notes" style="margin-bottom:12px">
+      <div class="notes-title">MP/HJ open vs 3-bet</div>
+      <div class="note-item"><b>4-bet value:</b> AA, KK, QQ, JJ, AKo/s, AQo/s, AJs</div>
+      <div class="note-item"><b>4-bet bluffs (reduced in PKO):</b> A5s, A4s. Avoid mixing in extra bluffs — bounty hunters call too wide.</div>
+      <div class="note-item"><b>Call IP:</b> TT–77, ATs, KQs, QJs–QTs, JTs–T9s, 98s–87s, 76s–65s, 54s</div>
+      <div class="note-item"><b>vs OOP 3-bet (blinds):</b> Very tight call. TT+, AQs+ only. The PKO bounty on your head makes their 3-bet calls even wider — you need stronger hands to continue OOP.</div>
+    </div>
+  </div>
+
+  <div id="def-co" class="range-panel">
+    <div class="notes" style="margin-bottom:12px">
+      <div class="notes-title">CO open vs 3-bet</div>
+      <div class="note-item"><b>vs BTN 3-bet (OOP):</b> 4-bet AA/KK/QQ/AKs/AKo/AQs. Call TT–88, AJs, KQs, JTs. Fold AQo, KQo, 77–55 OOP. <b class="amber">PKO note: be even more reluctant to call OOP — BTN has your bounty as a reason to play back.</b></div>
+      <div class="note-item"><b>vs SB/BB 3-bet (IP):</b> Wide call range. Add 77–55, ATs–A9s, KJs–KTs, QJs, 98s–87s–76s–65s. 4-bet bluff A5s/A4s — but expect wider calls than vanilla.</div>
+      <div class="note-item"><b>Stack depth aware:</b> At 20BB 3-bet vs your CO open = call/fold/4-bet-shove decision only. Plan it before acting.</div>
+    </div>
+  </div>
+
+  <div id="def-btn" class="range-panel">
+    <div class="notes" style="margin-bottom:12px">
+      <div class="notes-title">BTN open vs 3-bet</div>
+      <div class="note-item"><b>Always IP.</b> PKO makes this spot even more valuable — you can widen calls because bounty equity adds to your edge.</div>
+      <div class="note-item"><b>4-bet value:</b> AA, KK, QQ, JJ, AKo/s, AQs. 4-bet bluffs: A5s, A4s (sparingly).</div>
+      <div class="note-item"><b>Call range vs BB:</b> TT–22, AJs–A2s, KQs–K9s, QJs–Q9s, JTs–54s, AQo–ATo, KQo–KJo.</div>
+      <div class="note-item"><b>PKO twist:</b> If the BB has a large bounty on their head, you actually want to CALL wider to keep them in the pot. Shoving them out reduces your bounty equity. Play postflop and leverage position.</div>
+    </div>
+  </div>
+
+  <div id="def-sb" class="range-panel">
+    <div class="notes" style="margin-bottom:12px">
+      <div class="notes-title">SB open vs BB 3-bet</div>
+      <div class="note-item"><b>Toughest spot.</b> OOP with no bounty dynamic helping you — your defence range stays narrow.</div>
+      <div class="note-item"><b>4-bet value:</b> AA, KK, QQ, AKs, AKo.</div>
+      <div class="note-item"><b>4-bet bluffs:</b> A5s, A4s only. PKO reduces bluff frequency here — BB calls for your bounty.</div>
+      <div class="note-item"><b>Call:</b> JJ, TT, AQs (deep stacks only). Fold everything else.</div>
+      <div class="note-item"><b>PKO note:</b> If BB has a big bounty, don't fold JJ or TT to a 3-bet just because you're OOP — the bounty equity compensates. Factor it in before folding strong hands.</div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════
+     PAGE 3 — BOUNTY CALLS
+═══════════════════════════════════════════ -->
+<div id="page-bounty" class="content">
+  <div class="page-header">
+    <div class="page-title">Bounty Call Calculator <span class="pko-badge">8-Max PKO</span></div>
+    <div class="page-sub">Use this to work out whether calling a short-stack shove is profitable once you include the bounty overlay. Fill in the values and hit Calculate.</div>
+  </div>
+
+  <div class="calc-wrap">
+    <div class="calc-title">Should I call this shove?</div>
+    <div class="calc-grid">
+      <div class="calc-field">
+        <label class="calc-label">Pot size before call (BB)</label>
+        <input class="calc-input" type="number" id="pot" placeholder="e.g. 18" min="0" step="0.5">
+      </div>
+      <div class="calc-field">
+        <label class="calc-label">Amount to call (BB)</label>
+        <input class="calc-input" type="number" id="call-size" placeholder="e.g. 12" min="0" step="0.5">
+      </div>
+      <div class="calc-field">
+        <label class="calc-label">Your hand equity vs villain range (%)</label>
+        <input class="calc-input" type="number" id="equity" placeholder="e.g. 40" min="0" max="100">
+      </div>
+      <div class="calc-field">
+        <label class="calc-label">Villain's bounty value ($)</label>
+        <input class="calc-input" type="number" id="bounty" placeholder="e.g. 5" min="0" step="0.5">
+      </div>
+      <div class="calc-field">
+        <label class="calc-label">Buy-in / avg stack value ($)</label>
+        <input class="calc-input" type="number" id="buyin" placeholder="e.g. 10" min="0" step="0.5">
+      </div>
+      <div class="calc-field">
+        <label class="calc-label">Your stack (BB)</label>
+        <input class="calc-input" type="number" id="mystack" placeholder="e.g. 35" min="0" step="0.5">
+      </div>
+    </div>
+    <button class="calc-btn" onclick="calcBounty()">Calculate</button>
+    <div class="calc-result" id="calc-output" style="margin-top:14px;display:none"></div>
+  </div>
+
+  <div class="sec-title">Quick reference — when bounties justify wider calls</div>
+
+  <table class="push-table">
+    <thead><tr><th>Bounty vs buy-in ratio</th><th>Call adjustment</th><th>Example hands now profitable to call</th></tr></thead>
+    <tbody>
+      <tr>
+        <td><span class="tag tag-g">Small</span> &lt;25% of buy-in</td>
+        <td>Minimal change. Treat near-vanilla.</td>
+        <td>Same as regular MTT call ranges.</td>
+      </tr>
+      <tr>
+        <td><span class="tag tag-a">Medium</span> 25–75% of buy-in</td>
+        <td>Widen call range by ~5–8%. Marginal calls become profitable.</td>
+        <td>K9o, A7o, 55–44 now profitable calls vs short-stack shoves in position.</td>
+      </tr>
+      <tr>
+        <td><span class="tag tag-g">Large</span> 75–150% of buy-in</td>
+        <td>Widen significantly. Big bounties flip many marginal spots.</td>
+        <td>Q8o, J9o, 33–22, A5o become profitable. Calling off ~35% pot odds is fine.</td>
+      </tr>
+      <tr>
+        <td><span class="tag tag-g">Massive</span> &gt;150% of buy-in</td>
+        <td>Call extremely wide. Any hand with reasonable equity is a call.</td>
+        <td>Two broadway cards, any pair, any Ax, K8o+, Q9o+ — all profitable calls.</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <div class="info-box blue">
+    <b>Remember:</b> You only collect 50% of the bounty immediately — the other 50% is added to your own head. Factor in only the 50% you actually pocket when calculating call profitability. The formula: <b>Bounty EV = 0.5 × bounty value × your win probability.</b>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════
+     PAGE 4 — PKO SCENARIOS
+═══════════════════════════════════════════ -->
+<div id="page-scenarios" class="content">
+  <div class="page-header">
+    <div class="page-title">PKO Scenarios <span class="pko-badge">8-Max PKO</span></div>
+    <div class="page-sub">Common PKO spots that trip players up and how to handle them correctly.</div>
+  </div>
+
+  <div class="sec-title">Spots where PKO changes the correct play</div>
+
+  <div class="scenario-grid">
+    <div class="scenario-card">
+      <div class="scenario-title green">Short stack shoves into you</div>
+      <div class="scenario-body">Their bounty adds real $ to your call. <b>Use the calculator</b> — a marginal fold in vanilla (K9o, 55) may be a clear call once bounty equity is added. The bigger their bounty relative to buy-in, the wider you call.</div>
+    </div>
+    <div class="scenario-card">
+      <div class="scenario-title amber">YOU are the short stack</div>
+      <div class="scenario-body">Opponents call your shoves wider because they want your bounty. <b>Tighten your shove range slightly</b> vs callers who are likely bounty hunting. Avoid marginal shoves (K8o, Q9s) that would be fine in vanilla.</div>
+    </div>
+    <div class="scenario-card">
+      <div class="scenario-title green">3-way all-in for a bounty</div>
+      <div class="scenario-body">If there's a short stack all-in and another player calls, <b>overcall wider</b> than normal — you're not just competing for chips, you're competing for the bounty. Even a small equity share justifies calling.</div>
+    </div>
+    <div class="scenario-card">
+      <div class="scenario-title amber">Big stack opens, you're in blinds</div>
+      <div class="scenario-body">If the big stack has a large accumulated bounty on their head, <b>3-bet more aggressively</b> as a bluff — fold equity is valuable and winning the pot doesn't get them the bounty. But if called, be prepared to play cautiously OOP.</div>
+    </div>
+    <div class="scenario-card">
+      <div class="scenario-title green">Two all-ins ahead of you</div>
+      <div class="scenario-body">If both players are all-in before you, <b>one of them is getting eliminated</b> regardless. You have a chance to win a bounty for free by calling with a wide range — even a coin flip is fine here given the dead bounty equity.</div>
+    </div>
+    <div class="scenario-card">
+      <div class="scenario-title amber">Near the bubble</div>
+      <div class="scenario-body">ICM pressure increases near pay jumps. <b>Do not over-call for bounties</b> when ICM cost is high. A bounty worth $5 is not worth busting out of a spot worth $50 in ICM equity. Tighten call-offs near the bubble.</div>
+    </div>
+    <div class="scenario-card">
+      <div class="scenario-title red">Your own bounty grows large</div>
+      <div class="scenario-body">When you've knocked out several players, your own bounty becomes a target. <b>Expect wider calls and 3-bets against you.</b> Reduce bluff frequency, tighten marginal spots, and avoid putting your stack at risk in thin spots.</div>
+    </div>
+    <div class="scenario-card">
+      <div class="scenario-title red">Don't over-prioritise bounties</div>
+      <div class="scenario-body">A common PKO leak: <b>calling off too wide</b> because "there's a bounty." Bounties add EV — they don't flip losing calls into winning ones. Still need reasonable equity. A 25% equity call is still a losing call even with a bounty overlay.</div>
+    </div>
+  </div>
+
+  <div class="sec-title">3-bet frequency adjustments in PKO</div>
+  <table class="push-table">
+    <thead><tr><th>Situation</th><th>Adjust 3-bet frequency</th><th>Why</th></tr></thead>
+    <tbody>
+      <tr><td>You have a large bounty</td><td><span class="tag tag-r">Down</span> Reduce bluff 3-bets</td><td>Opponents call wider for your bounty — bluffs get less fold equity</td></tr>
+      <tr><td>Opponent has a large bounty</td><td><span class="tag tag-g">Up</span> 3-bet more for value</td><td>They call wide — your value hands get more action and you profit</td></tr>
+      <tr><td>Opponent is short with big bounty</td><td><span class="tag tag-g">Up</span> 3-bet to isolate</td><td>Isolating the short stack gives you heads-up shot at the bounty</td></tr>
+      <tr><td>Near the bubble</td><td><span class="tag tag-r">Down</span> Reduce overall 3-bets</td><td>ICM pressure outweighs bounty EV in most spots near pay jumps</td></tr>
+      <tr><td>Deep stacks, early levels</td><td><span class="tag tag-a">Neutral</span> Near-vanilla</td><td>Bounties are small relative to stack — ICM and chip EV dominate</td></tr>
+    </tbody>
+  </table>
+</div>
+
+<!-- ═══════════════════════════════════════════
+     PAGE 5 — REMINDERS
+═══════════════════════════════════════════ -->
+<div id="page-reminders" class="content">
+  <div class="page-header">
+    <div class="page-title">PKO Reminders <span class="pko-badge">8-Max PKO</span></div>
+    <div class="page-sub">Mental checklist for PKO-specific discipline.</div>
+  </div>
+
+  <div class="sec-title">Core PKO principles</div>
+  <div class="remind-grid">
+    <div class="remind-card"><div class="remind-card-title">Bounty = extra EV, not a reason to call</div><p>Bounties <b>add to your EV</b> on profitable calls. They do not <b>create</b> EV on losing calls. Still need equity.</p></div>
+    <div class="remind-card"><div class="remind-card-title">You collect 50%, not 100%</div><p>Half the bounty goes in your pocket. <b>Half goes on your head.</b> Only factor the 50% you keep into call math.</p></div>
+    <div class="remind-card"><div class="remind-card-title">Your bounty makes you a target</div><p>The more you accumulate, the wider opponents play vs you. <b>Reduce bluff frequency</b> as your bounty grows.</p></div>
+    <div class="remind-card"><div class="remind-card-title">Isolate bounty-rich short stacks</div><p>3-bet or re-isolate to get heads-up with short stacks carrying large bounties. <b>Don't let the table limp-call them.</b></p></div>
+  </div>
+
+  <div class="sec-title">When PKO math matters most</div>
+  <div class="remind-grid">
+    <div class="remind-card"><div class="remind-card-title">Mid-to-late stages</div><p>Early game bounties are small. <b>PKO math kicks in hard</b> once stacks are 20–30BB and bounties have grown.</p></div>
+    <div class="remind-card"><div class="remind-card-title">Short stack shoves</div><p>This is your primary bounty spot. <b>Recalculate pot odds</b> every time a short stack shoves — include the bounty.</p></div>
+    <div class="remind-card"><div class="remind-card-title">Bubble awareness</div><p><b>Don't chase bounties near the bubble.</b> ICM value of staying alive trumps a small bounty in most spots.</p></div>
+    <div class="remind-card"><div class="remind-card-title">Final table dynamics</div><p>At the final table bounties can be massive. <b>Recalibrate every level</b> — the game changes dramatically as bounties stack up.</p></div>
+  </div>
+
+  <div class="sec-title">Common PKO leaks to avoid</div>
+  <div class="remind-grid">
+    <div class="remind-card"><div class="remind-card-title">Calling too wide for bounties</div><p>Most common leak. <b>A bounty does not justify a 25% equity call.</b> Run the math before making big calls.</p></div>
+    <div class="remind-card"><div class="remind-card-title">Bluffing bounty hunters</div><p>Players gunning for your bounty <b>won't fold.</b> Stop bluffing them and start value-betting thinner instead.</p></div>
+    <div class="remind-card"><div class="remind-card-title">Ignoring ICM near the bubble</div><p><b>ICM and bounties pull in opposite directions</b> near pay jumps. Bounty hunting near the bubble costs tournament equity.</p></div>
+    <div class="remind-card"><div class="remind-card-title">Forgetting your stack depth</div><p>PKO call math assumes you can survive the call. <b>Calling off your whole stack</b> for a small bounty at a deep ICM spot is usually wrong.</p></div>
+  </div>
+</div>
+
+<script>
+function switchPage(id, btn) {
+  document.querySelectorAll('.content').forEach(c => c.classList.remove('active'));
+  document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
+  document.getElementById('page-' + id).classList.add('active');
+  btn.classList.add('active');
+}
+
+function switchPos(group, pos, btn) {
+  const page = btn.closest('.content');
+  page.querySelectorAll('.range-panel').forEach(p => p.classList.remove('active'));
+  const tabs = btn.closest('.pos-tabs');
+  if (tabs) tabs.querySelectorAll('.pos-btn').forEach(b => b.classList.remove('active'));
+  const target = document.getElementById(group + '-' + pos);
+  if (target) target.classList.add('active');
+  btn.classList.add('active');
+}
+
+function calcBounty() {
+  const pot      = parseFloat(document.getElementById('pot').value) || 0;
+  const callSize = parseFloat(document.getElementById('call-size').value) || 0;
+  const equity   = parseFloat(document.getElementById('equity').value) / 100 || 0;
+  const bounty   = parseFloat(document.getElementById('bounty').value) || 0;
+  const buyin    = parseFloat(document.getElementById('buyin').value) || 1;
+  const mystack  = parseFloat(document.getElementById('mystack').value) || 0;
+
+  if (!callSize || !equity) {
+    document.getElementById('calc-output').style.display = 'block';
+    document.getElementById('calc-output').innerHTML = '<span style="color:#f87171">Please fill in at least pot, call size, and equity.</span>';
+    return;
+  }
+
+  const totalPot   = pot + callSize;
+  const chipEV     = (equity * totalPot) - ((1 - equity) * callSize);
+  const bountyEV   = 0.5 * bounty * equity;
+  const bbValue    = buyin / (mystack || 30);
+  const chipEVdollar = chipEV * bbValue;
+  const totalEV    = chipEVdollar + bountyEV;
+  const reqEquity  = Math.round((callSize / totalPot) * 100);
+  const potOdds    = Math.round(equity * 100);
+
+  let verdict = '', vclass = '';
+  if (totalEV > 0.5)       { verdict = '✓ Call'; vclass = 'call'; }
+  else if (totalEV < -0.5) { verdict = '✗ Fold'; vclass = 'fold'; }
+  else                      { verdict = '~ Marginal — use reads'; vclass = 'marginal'; }
+
+  document.getElementById('calc-output').style.display = 'block';
+  document.getElementById('calc-output').innerHTML = `
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;font-size:12px;color:var(--muted);margin-bottom:10px">
+      <div>Required equity (pot odds): <b style="color:var(--text)">${reqEquity}%</b></div>
+      <div>Your equity: <b style="color:var(--text)">${Math.round(equity*100)}%</b></div>
+      <div>Chip EV (in $): <b style="color:${chipEVdollar>=0?'#6ee7b7':'#f87171'}">${chipEVdollar>=0?'+':''}$${chipEVdollar.toFixed(2)}</b></div>
+      <div>Bounty EV (50%): <b style="color:#6ee7b7">+$${bountyEV.toFixed(2)}</b></div>
+      <div>Total EV: <b style="color:${totalEV>=0?'#6ee7b7':'#f87171'}">${totalEV>=0?'+':''}$${totalEV.toFixed(2)}</b></div>
+    </div>
+    <div class="verdict ${vclass}">${verdict}</div>
+  `;
+}
+
+function switchRFI(format, pos, btn) {
+  btn.closest('.rfi-opener-tabs').querySelectorAll('.rfi-opener-btn').forEach(function(b) {
+    b.classList.remove('active');
+  });
+  btn.classList.add('active');
+  var prefix = 'vsrfi-' + format + '-';
+  document.querySelectorAll('[id]').forEach(function(el) {
+    if (el.id.indexOf(prefix) === 0) el.classList.remove('active');
+  });
+  var target = document.getElementById('vsrfi-' + format + '-' + pos);
+  if (target) target.classList.add('active');
+}
+
+</script>
+
+<div id="page-vsrfi" class="content">
+  <div class="page-header">
+    <div class="page-title">vs RFI Defence <span style="background:#064e3b;color:#6ee7b7;font-size:10px;font-weight:700;padding:2px 8px;border-radius:4px;margin-left:6px">8-Max PKO</span></div>
+    <div class="page-sub">Facing an RFI in PKO — bounty overlays widen calling ranges but reduce 3-bet bluff frequency. Both effects are factored in.</div>
+  </div>
+  <div id="vsrfi-tabs-pko" class="rfi-opener-tabs"><button class="rfi-opener-btn active" onclick="switchRFI('pko','utg',this)">vs UTG Open</button><button class="rfi-opener-btn" onclick="switchRFI('pko','utg1',this)">vs UTG+1 Open</button><button class="rfi-opener-btn" onclick="switchRFI('pko','mp',this)">vs MP Open</button><button class="rfi-opener-btn" onclick="switchRFI('pko','hj',this)">vs HJ Open</button><button class="rfi-opener-btn" onclick="switchRFI('pko','co',this)">vs CO Open</button><button class="rfi-opener-btn" onclick="switchRFI('pko','btn',this)">vs BTN Open</button><button class="rfi-opener-btn" onclick="switchRFI('pko','sb',this)">vs SB Open</button></div><div id="vsrfi-pko-utg" class="rfi-panel active"><p class="rfi-pos-label">UTG opens ~14% in 8-max PKO — tight range, respect it unless a big bounty is attached.</p><div class="rfi-grid"><div class="rfi-card"><div class="rfi-card-title call">Call (In Position)</div><div class="rfi-hand-list"><span class="h">TT</span><span class="h">99</span><span class="h">88</span><span class="h">77</span><span class="h">AJs</span><span class="h">ATs</span><span class="h">KQs</span><span class="h">QJs</span><span class="h">JTs</span><span class="h">T9s</span><span class="h">98s</span><span class="h">87s</span></div></div><div class="rfi-card"><div class="rfi-card-title call">Call (Out of Position)</div><div class="rfi-hand-list"><span class="h">JJ</span><span class="h">TT</span><span class="h">AQs</span><span class="h">KQs</span></div></div><div class="rfi-card"><div class="rfi-card-title vbet">3-Bet for Value</div><div class="rfi-hand-list"><span class="v">AA</span><span class="v">KK</span><span class="v">QQ</span><span class="v">JJ</span><span class="v">AKs</span><span class="v">AKo</span><span class="v">AQs</span><span class="v">AQo</span></div></div><div class="rfi-card"><div class="rfi-card-title bluff">3-Bet Bluffs</div><div class="rfi-hand-list"><span class="b">A5s</span><span class="b">A4s (sparingly — PKO callers are wider)</span></div></div></div><div class="rfi-card" style="margin-bottom:12px"><div class="rfi-card-title fold">Always Fold Facing This Open</div><div class="rfi-hand-list"><span class="f">22-66 OOP</span><span class="f">K9o and below</span><span class="f">offsuit unconnected</span><span class="f">SC below T8s OOP</span></div></div><div class="rfi-card"><div class="rfi-card-title" style="color:var(--accent2,#f59e0b)">Key Rules</div><div class="rfi-rule"><b>PKO bounty on opener changes your range.</b> If UTG has a large bounty, widen IP calls by 1-2 combos — set equity + bounty justifies it.</div><div class="rfi-rule"><b>Reduce 3-bet bluff frequency vs PKO players.</b> They call 3-bets wider to chase your bounty — don't bluff into bounty hunters.</div><div class="rfi-rule"><b>OOP stays tight regardless of bounty.</b> The bounty doesn't compensate for playing OOP vs a strong range.</div></div></div><div id="vsrfi-pko-utg1" class="rfi-panel"><p class="rfi-pos-label">UTG+1 opens ~16% — near-UTG treatment with minor PKO adjustments.</p><div class="rfi-grid"><div class="rfi-card"><div class="rfi-card-title call">Call (In Position)</div><div class="rfi-hand-list"><span class="h">TT</span><span class="h">99</span><span class="h">88</span><span class="h">77</span><span class="h">66</span><span class="h">AJs</span><span class="h">ATs</span><span class="h">A9s</span><span class="h">KQs</span><span class="h">KJs</span><span class="h">QJs</span><span class="h">JTs</span><span class="h">T9s</span><span class="h">98s</span><span class="h">87s</span><span class="h">76s</span></div></div><div class="rfi-card"><div class="rfi-card-title call">Call (Out of Position)</div><div class="rfi-hand-list"><span class="h">JJ</span><span class="h">TT</span><span class="h">99</span><span class="h">AQs</span><span class="h">AJs</span><span class="h">KQs</span></div></div><div class="rfi-card"><div class="rfi-card-title vbet">3-Bet for Value</div><div class="rfi-hand-list"><span class="v">AA</span><span class="v">KK</span><span class="v">QQ</span><span class="v">JJ</span><span class="v">AKs</span><span class="v">AKo</span><span class="v">AQs</span><span class="v">AQo</span></div></div><div class="rfi-card"><div class="rfi-card-title bluff">3-Bet Bluffs</div><div class="rfi-hand-list"><span class="b">A5s</span><span class="b">A4s</span></div></div></div><div class="rfi-card" style="margin-bottom:12px"><div class="rfi-card-title fold">Always Fold Facing This Open</div><div class="rfi-hand-list"><span class="f">22-44 OOP</span><span class="f">K8o and below</span><span class="f">Q9o and below OOP</span></div></div><div class="rfi-card"><div class="rfi-card-title" style="color:var(--accent2,#f59e0b)">Key Rules</div><div class="rfi-rule"><b>PKO squeeze opportunities increase.</b> If UTG+1 opens and others call, squeeze from the blinds with a tight polar range — you're attacking multiple bounties.</div><div class="rfi-rule"><b>Calling wide IP is fine.</b> UTG+1 has enough bluffs that suited connectors in position play profitably.</div></div></div><div id="vsrfi-pko-mp" class="rfi-panel"><p class="rfi-pos-label">MP opens ~20% — PKO bounty overlay starts mattering here.</p><div class="rfi-grid"><div class="rfi-card"><div class="rfi-card-title call">Call (In Position)</div><div class="rfi-hand-list"><span class="h">TT</span><span class="h">99</span><span class="h">88</span><span class="h">77</span><span class="h">66</span><span class="h">55</span><span class="h">AJs</span><span class="h">ATs</span><span class="h">A9s</span><span class="h">KQs</span><span class="h">KJs</span><span class="h">KTs</span><span class="h">QJs</span><span class="h">QTs</span><span class="h">JTs</span><span class="h">J9s</span><span class="h">T9s</span><span class="h">T8s</span><span class="h">98s</span><span class="h">97s</span><span class="h">87s</span><span class="h">76s</span><span class="h">65s</span></div></div><div class="rfi-card"><div class="rfi-card-title call">Call (Out of Position)</div><div class="rfi-hand-list"><span class="h">JJ</span><span class="h">TT</span><span class="h">99</span><span class="h">88</span><span class="h">AQs</span><span class="h">AJs</span><span class="h">ATs</span><span class="h">KQs</span><span class="h">KJs</span><span class="h">QJs</span><span class="h">JTs</span></div></div><div class="rfi-card"><div class="rfi-card-title vbet">3-Bet for Value</div><div class="rfi-hand-list"><span class="v">AA</span><span class="v">KK</span><span class="v">QQ</span><span class="v">JJ</span><span class="v">AKs</span><span class="v">AKo</span><span class="v">AQs</span><span class="v">AQo</span><span class="v">TT (IP vs wide MP)</span></div></div><div class="rfi-card"><div class="rfi-card-title bluff">3-Bet Bluffs</div><div class="rfi-hand-list"><span class="b">A5s</span><span class="b">A4s</span><span class="b">A3s</span></div></div></div><div class="rfi-card" style="margin-bottom:12px"><div class="rfi-card-title fold">Always Fold Facing This Open</div><div class="rfi-hand-list"><span class="f">22-33 OOP</span><span class="f">K8o and below OOP</span><span class="f">offsuit unconnected hands</span></div></div><div class="rfi-card"><div class="rfi-card-title" style="color:var(--accent2,#f59e0b)">Key Rules</div><div class="rfi-rule"><b>PKO bounty on MP opener:</b> If they have a medium+ bounty, add 55 and A8s to your IP flat range — extra implied odds.</div><div class="rfi-rule"><b>3-bet frequency increases vs MP</b> compared to UTG. Their range has more bluffs — your value 3-bets get called lighter.</div><div class="rfi-rule"><b>OOP call range expands slightly.</b> 88 becomes a standard call from BB vs MP in PKO — set equity + bounty overlay.</div></div></div><div id="vsrfi-pko-hj" class="rfi-panel"><p class="rfi-pos-label">HJ opens ~24% in 8-max PKO. Defend actively, target bounties.</p><div class="rfi-grid"><div class="rfi-card"><div class="rfi-card-title call">Call (In Position)</div><div class="rfi-hand-list"><span class="h">TT</span><span class="h">99</span><span class="h">88</span><span class="h">77</span><span class="h">66</span><span class="h">55</span><span class="h">44</span><span class="h">ATs</span><span class="h">A9s</span><span class="h">A8s</span><span class="h">KQs</span><span class="h">KJs</span><span class="h">KTs</span><span class="h">QJs</span><span class="h">QTs</span><span class="h">Q9s</span><span class="h">JTs</span><span class="h">J9s</span><span class="h">T9s</span><span class="h">T8s</span><span class="h">98s</span><span class="h">97s</span><span class="h">87s</span><span class="h">86s</span><span class="h">76s</span><span class="h">65s</span><span class="h">54s</span></div></div><div class="rfi-card"><div class="rfi-card-title call">Call (Out of Position)</div><div class="rfi-hand-list"><span class="h">JJ</span><span class="h">TT</span><span class="h">99</span><span class="h">88</span><span class="h">77</span><span class="h">AQs</span><span class="h">AJs</span><span class="h">ATs</span><span class="h">KQs</span><span class="h">KJs</span><span class="h">QJs</span><span class="h">JTs</span><span class="h">T9s</span></div></div><div class="rfi-card"><div class="rfi-card-title vbet">3-Bet for Value</div><div class="rfi-hand-list"><span class="v">AA</span><span class="v">KK</span><span class="v">QQ</span><span class="v">JJ</span><span class="v">TT (IP)</span><span class="v">AKs</span><span class="v">AKo</span><span class="v">AQs</span><span class="v">AQo</span><span class="v">AJs (IP)</span></div></div><div class="rfi-card"><div class="rfi-card-title bluff">3-Bet Bluffs</div><div class="rfi-hand-list"><span class="b">A5s</span><span class="b">A4s</span><span class="b">A3s</span><span class="b">K4s</span><span class="b">65s (IP)</span><span class="b">54s (IP)</span></div></div></div><div class="rfi-card" style="margin-bottom:12px"><div class="rfi-card-title fold">Always Fold Facing This Open</div><div class="rfi-hand-list"><span class="f">22-33 OOP</span><span class="f">K7o and below OOP</span><span class="f">weak offsuit hands</span></div></div><div class="rfi-card"><div class="rfi-card-title" style="color:var(--accent2,#f59e0b)">Key Rules</div><div class="rfi-rule"><b>PKO twist: isolate the HJ if they're short with a big bounty.</b> 3-bet wider to get heads-up with them.</div><div class="rfi-rule"><b>Don't cold 3-bet bluff if YOU have a large bounty.</b> HJ will call wider trying to bust you — your bluffs get less fold equity.</div><div class="rfi-rule"><b>BB defends wide.</b> HJ opens ~24% with PKO bluffs — defend 77+, suited connectors, suited broadway.</div></div></div><div id="vsrfi-pko-co" class="rfi-panel"><p class="rfi-pos-label">CO opens ~30% in 8-max PKO — wide range, active defence warranted.</p><div class="rfi-grid"><div class="rfi-card"><div class="rfi-card-title call">Call (In Position)</div><div class="rfi-hand-list"><span class="h">TT</span><span class="h">99</span><span class="h">88</span><span class="h">77</span><span class="h">66</span><span class="h">55</span><span class="h">44</span><span class="h">33</span><span class="h">ATs</span><span class="h">A9s</span><span class="h">A8s</span><span class="h">A7s</span><span class="h">KQs</span><span class="h">KJs</span><span class="h">KTs</span><span class="h">K9s</span><span class="h">QJs</span><span class="h">QTs</span><span class="h">Q9s</span><span class="h">JTs</span><span class="h">J9s</span><span class="h">J8s</span><span class="h">T9s</span><span class="h">T8s</span><span class="h">T7s</span><span class="h">98s</span><span class="h">97s</span><span class="h">87s</span><span class="h">86s</span><span class="h">76s</span><span class="h">65s</span><span class="h">64s</span><span class="h">54s</span></div></div><div class="rfi-card"><div class="rfi-card-title call">Call (Out of Position)</div><div class="rfi-hand-list"><span class="h">JJ</span><span class="h">TT</span><span class="h">99</span><span class="h">88</span><span class="h">77</span><span class="h">66</span><span class="h">AQs</span><span class="h">AJs</span><span class="h">ATs</span><span class="h">A9s</span><span class="h">KQs</span><span class="h">KJs</span><span class="h">QJs</span><span class="h">JTs</span><span class="h">T9s</span><span class="h">98s</span></div></div><div class="rfi-card"><div class="rfi-card-title vbet">3-Bet for Value</div><div class="rfi-hand-list"><span class="v">AA</span><span class="v">KK</span><span class="v">QQ</span><span class="v">JJ</span><span class="v">TT (IP)</span><span class="v">AKs</span><span class="v">AKo</span><span class="v">AQs</span><span class="v">AQo</span><span class="v">AJs (IP)</span><span class="v">99 (IP vs wide CO)</span></div></div><div class="rfi-card"><div class="rfi-card-title bluff">3-Bet Bluffs</div><div class="rfi-hand-list"><span class="b">A5s</span><span class="b">A4s</span><span class="b">A3s</span><span class="b">A2s</span><span class="b">K4s</span><span class="b">K3s</span><span class="b">76s</span><span class="b">65s</span><span class="b">54s</span></div></div></div><div class="rfi-card" style="margin-bottom:12px"><div class="rfi-card-title fold">Always Fold Facing This Open</div><div class="rfi-hand-list"><span class="f">22 OOP unless bounty is massive</span><span class="f">K7o and below OOP</span><span class="f">Q8o and below OOP</span></div></div><div class="rfi-card"><div class="rfi-card-title" style="color:var(--accent2,#f59e0b)">Key Rules</div><div class="rfi-rule"><b>BTN is the best 3-bet seat vs CO in PKO.</b> Wide polar range — AA–99/AK–AJ value, suited Ax bluffs.</div><div class="rfi-rule"><b>PKO bounty on CO opener:</b> If they have a large bounty and you're IP (BTN), call wider with small pairs — set equity + bounty = profitable.</div><div class="rfi-rule"><b>BB defends extremely wide.</b> CO opens so wide in PKO that almost any connected hand defends profitably from BB.</div><div class="rfi-rule"><b>3-bet bluff reduction:</b> If you have a large bounty, halve your bluff 3-bet frequency — CO will call to bust you.</div></div></div><div id="vsrfi-pko-btn" class="rfi-panel"><p class="rfi-pos-label">BTN opens ~45% in 8-max PKO — defend very wide, 3-bet aggressively.</p><div class="rfi-grid"><div class="rfi-card"><div class="rfi-card-title call">Call (In Position)</div><div class="rfi-hand-list"><span class="h">N/A — you are in blinds</span></div></div><div class="rfi-card"><div class="rfi-card-title call">Call (Out of Position)</div><div class="rfi-hand-list"><span class="h">Any pair 22+</span><span class="h">All Ax suited</span><span class="h">KQs-K9s</span><span class="h">QJs-Q8s</span><span class="h">JTs-J7s</span><span class="h">T9s-T6s</span><span class="h">98s-96s</span><span class="h">87s-86s</span><span class="h">76s</span><span class="h">65s</span><span class="h">AKo-A8o</span><span class="h">KQo-KTo</span><span class="h">QJo-Q9o</span><span class="h">JTo-J9o</span><span class="h">T9o</span></div></div><div class="rfi-card"><div class="rfi-card-title vbet">3-Bet for Value</div><div class="rfi-hand-list"><span class="v">AA</span><span class="v">KK</span><span class="v">QQ</span><span class="v">JJ</span><span class="v">TT</span><span class="v">99</span><span class="v">AKs</span><span class="v">AKo</span><span class="v">AQs</span><span class="v">AQo</span><span class="v">AJs</span></div></div><div class="rfi-card"><div class="rfi-card-title bluff">3-Bet Bluffs</div><div class="rfi-hand-list"><span class="b">A5s-A2s</span><span class="b">K5s-K3s</span><span class="b">65s</span><span class="b">54s</span><span class="b">suited connectors</span></div></div></div><div class="rfi-card" style="margin-bottom:12px"><div class="rfi-card-title fold">Always Fold Facing This Open</div><div class="rfi-hand-list"><span class="f">Very little from BB</span><span class="f">SB folds weakest unconnected offsuit only</span></div></div><div class="rfi-card"><div class="rfi-card-title" style="color:var(--accent2,#f59e0b)">Key Rules</div><div class="rfi-rule"><b>PKO BB vs BTN:</b> If BTN has a big bounty, call wider with pairs and connected hands — set equity + bounty = profitable even with marginal hands.</div><div class="rfi-rule"><b>3-bet from BB is highly profitable in PKO vs BTN.</b> BTN opens wide AND folds to 3-bets — your bluffs work well.</div><div class="rfi-rule"><b>BUT: if YOU have a large bounty</b> and BTN is re-raising, proceed with caution — they may be 3-betting just to bust you.</div></div></div><div id="vsrfi-pko-sb" class="rfi-panel"><p class="rfi-pos-label">SB opens ~50%+ in 8-max PKO — BB defends nearly everything.</p><div class="rfi-grid"><div class="rfi-card"><div class="rfi-card-title call">Call (In Position)</div><div class="rfi-hand-list"><span class="h">N/A — you are BB</span></div></div><div class="rfi-card"><div class="rfi-card-title call">Call (Out of Position)</div><div class="rfi-hand-list"><span class="h">Any pair</span><span class="h">All Ax suited</span><span class="h">KQs-K6s</span><span class="h">QJs-Q7s</span><span class="h">JTs-J6s</span><span class="h">T9s-T6s</span><span class="h">98s-96s</span><span class="h">87s</span><span class="h">76s</span><span class="h">65s</span><span class="h">AKo-A5o</span><span class="h">KQo-K8o</span><span class="h">QJo-Q9o</span><span class="h">JTo</span><span class="h">T9o</span><span class="h">98o</span></div></div><div class="rfi-card"><div class="rfi-card-title vbet">3-Bet for Value</div><div class="rfi-hand-list"><span class="v">AA</span><span class="v">KK</span><span class="v">QQ</span><span class="v">JJ</span><span class="v">TT</span><span class="v">99</span><span class="v">88</span><span class="v">AKs</span><span class="v">AKo</span><span class="v">AQs</span><span class="v">AQo</span><span class="v">AJs</span></div></div><div class="rfi-card"><div class="rfi-card-title bluff">3-Bet Bluffs</div><div class="rfi-hand-list"><span class="b">A5s-A2s</span><span class="b">K5s</span><span class="b">any suited connector</span><span class="b">suited broadway</span></div></div></div><div class="rfi-card" style="margin-bottom:12px"><div class="rfi-card-title fold">Always Fold Facing This Open</div><div class="rfi-hand-list"><span class="f">Pure trash: 72o, 62o, 32o</span><span class="f">Very weak unconnected offsuit only</span></div></div><div class="rfi-card"><div class="rfi-card-title" style="color:var(--accent2,#f59e0b)">Key Rules</div><div class="rfi-rule"><b>BB vs SB PKO — defend almost everything.</b> SB range is widest + PKO bounties make defence even more attractive.</div><div class="rfi-rule"><b>PKO bounty on SB:</b> If SB has a large bounty, call with literally any two reasonable cards — you're IP and the bounty overlay is massive.</div><div class="rfi-rule"><b>3-bet your strong hands to build pots.</b> SB is OOP — they'll fold or stack off. Either outcome is good for you.</div></div></div>
+</div>
+
+</body>
+</html>
