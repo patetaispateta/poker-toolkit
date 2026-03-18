@@ -1,0 +1,662 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Poker Trainer — Rahul</title>
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+:root {
+  --bg: #080b10;
+  --felt: #0d1f14;
+  --surface: #111827;
+  --surface2: #1a2535;
+  --border: #1f2d42;
+  --text: #e2e8f0;
+  --muted: #64748b;
+  --accent: #22d3ee;
+  --gold: #f59e0b;
+  --green: #10b981;
+  --red: #ef4444;
+  --purple: #8b5cf6;
+  --card-back: #1e3a5f;
+}
+body { background: var(--bg); color: var(--text); font-family: 'SF Pro Display', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; min-height: 100vh; overflow-x: hidden; }
+
+/* ── SETUP SCREEN ── */
+#setup-screen { display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 100vh; padding: 24px; }
+.setup-card { background: var(--surface); border: 1px solid var(--border); border-radius: 20px; padding: 32px; max-width: 540px; width: 100%; }
+.setup-title { font-size: 22px; font-weight: 700; color: var(--accent); margin-bottom: 4px; letter-spacing: -0.5px; }
+.setup-sub { font-size: 13px; color: var(--muted); margin-bottom: 28px; }
+.setup-row { margin-bottom: 18px; }
+.setup-label { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.08em; color: var(--muted); margin-bottom: 8px; display: block; }
+.setup-options { display: flex; flex-wrap: wrap; gap: 6px; }
+.opt-btn { padding: 7px 14px; border-radius: 8px; border: 1px solid var(--border); background: var(--surface2); color: var(--muted); font-size: 12px; font-weight: 600; cursor: pointer; transition: all .15s; }
+.opt-btn.selected { border-color: var(--accent); background: rgba(34,211,238,0.12); color: var(--accent); }
+.opt-btn:hover:not(.selected) { border-color: var(--muted); color: var(--text); }
+.start-btn { width: 100%; padding: 14px; border-radius: 12px; border: none; background: var(--accent); color: #000; font-size: 15px; font-weight: 700; cursor: pointer; margin-top: 8px; transition: opacity .15s; letter-spacing: -0.3px; }
+.start-btn:hover { opacity: 0.88; }
+.start-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+
+/* ── GAME SCREEN ── */
+#game-screen { display: none; flex-direction: column; min-height: 100vh; }
+
+/* Table felt */
+.felt-area { background: radial-gradient(ellipse at 50% 40%, #0d2a1a 0%, #081510 100%); border-bottom: 3px solid #1a3d24; padding: 20px 16px 16px; position: relative; }
+.table-rail { position: absolute; bottom: 0; left: 0; right: 0; height: 3px; background: linear-gradient(90deg, #2d6a3f, #4ade80, #2d6a3f); opacity: 0.5; }
+
+/* Hero/Villain info bars */
+.player-bar { display: flex; align-items: center; justify-content: space-between; padding: 8px 12px; border-radius: 10px; margin-bottom: 10px; }
+.villain-bar { background: rgba(139,92,246,0.1); border: 1px solid rgba(139,92,246,0.25); }
+.hero-bar { background: rgba(34,211,238,0.08); border: 1px solid rgba(34,211,238,0.2); }
+.player-label { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; }
+.villain-bar .player-label { color: var(--purple); }
+.hero-bar .player-label { color: var(--accent); }
+.player-stack { font-size: 14px; font-weight: 700; color: var(--gold); }
+.player-position { font-size: 11px; color: var(--muted); background: var(--surface); padding: 2px 8px; border-radius: 4px; }
+.player-cards { display: flex; gap: 4px; }
+
+/* Cards */
+.card { width: 38px; height: 54px; border-radius: 6px; display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 800; border: 1px solid rgba(255,255,255,0.1); position: relative; overflow: hidden; flex-shrink: 0; }
+.card.back { background: var(--card-back); color: transparent; background-image: repeating-linear-gradient(45deg, rgba(255,255,255,0.03) 0, rgba(255,255,255,0.03) 1px, transparent 0, transparent 50%); background-size: 6px 6px; }
+.card.face { background: #fff; flex-direction: column; gap: 0; }
+.card.face .rank { font-size: 13px; font-weight: 900; line-height: 1; }
+.card.face .suit { font-size: 11px; line-height: 1; }
+.card.red-card .rank, .card.red-card .suit { color: #dc2626; }
+.card.black-card .rank, .card.black-card .suit { color: #111; }
+
+/* Community cards */
+.community-area { display: flex; justify-content: center; gap: 8px; padding: 12px 0; min-height: 76px; align-items: center; }
+.pot-display { text-align: center; margin: 4px 0; font-size: 12px; color: var(--gold); font-weight: 600; }
+
+/* Action area */
+.action-area { background: var(--surface); border-top: 1px solid var(--border); padding: 16px; flex: 1; display: flex; flex-direction: column; gap: 12px; overflow-y: auto; }
+
+/* Situation panel */
+.situation-panel { background: var(--surface2); border: 1px solid var(--border); border-radius: 12px; padding: 14px 16px; }
+.situation-title { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em; color: var(--muted); margin-bottom: 6px; }
+.situation-text { font-size: 13px; color: var(--text); line-height: 1.65; }
+
+/* Action buttons */
+.action-buttons { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; }
+.action-btn { padding: 12px 8px; border-radius: 10px; border: 1px solid var(--border); background: var(--surface2); color: var(--text); font-size: 13px; font-weight: 600; cursor: pointer; transition: all .15s; text-align: center; }
+.action-btn:hover:not(:disabled) { transform: translateY(-1px); }
+.action-btn:disabled { opacity: 0.35; cursor: not-allowed; }
+.action-btn.fold  { border-color: rgba(239,68,68,0.4);  }
+.action-btn.fold:hover:not(:disabled)  { background: rgba(239,68,68,0.15);  color: var(--red);    border-color: var(--red); }
+.action-btn.call  { border-color: rgba(16,185,129,0.4); }
+.action-btn.call:hover:not(:disabled)  { background: rgba(16,185,129,0.15); color: var(--green);  border-color: var(--green); }
+.action-btn.raise { border-color: rgba(34,211,238,0.4); }
+.action-btn.raise:hover:not(:disabled) { background: rgba(34,211,238,0.15); color: var(--accent); border-color: var(--accent); }
+.action-btn.check { border-color: rgba(245,158,11,0.4); }
+.action-btn.check:hover:not(:disabled) { background: rgba(245,158,11,0.15); color: var(--gold);   border-color: var(--gold); }
+.action-btn.bet   { border-color: rgba(34,211,238,0.4); }
+.action-btn.bet:hover:not(:disabled)   { background: rgba(34,211,238,0.15); color: var(--accent); border-color: var(--accent); }
+.action-btn-label { font-size: 10px; color: var(--muted); margin-top: 2px; }
+
+/* Raise sizing */
+.raise-row { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
+.size-btn { padding: 5px 10px; border-radius: 6px; border: 1px solid var(--border); background: var(--surface2); color: var(--muted); font-size: 11px; font-weight: 600; cursor: pointer; transition: all .15s; }
+.size-btn.selected { border-color: var(--accent); color: var(--accent); background: rgba(34,211,238,0.1); }
+.raise-input { padding: 6px 10px; border-radius: 6px; border: 1px solid var(--border); background: var(--surface2); color: var(--text); font-size: 12px; width: 80px; }
+.raise-input:focus { outline: none; border-color: var(--accent); }
+
+/* Bot response */
+.bot-response { background: rgba(139,92,246,0.08); border: 1px solid rgba(139,92,246,0.2); border-radius: 12px; padding: 14px 16px; }
+.bot-response-header { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; }
+.bot-action-badge { padding: 3px 10px; border-radius: 5px; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; }
+.badge-fold  { background: rgba(239,68,68,0.2);  color: var(--red); }
+.badge-call  { background: rgba(16,185,129,0.2); color: var(--green); }
+.badge-raise { background: rgba(34,211,238,0.2); color: var(--accent); }
+.badge-check { background: rgba(245,158,11,0.2); color: var(--gold); }
+.badge-bet   { background: rgba(34,211,238,0.2); color: var(--accent); }
+.badge-allin { background: rgba(239,68,68,0.2);  color: var(--red); }
+.bot-reasoning { font-size: 12px; color: var(--muted); line-height: 1.7; }
+
+/* Feedback */
+.feedback-box { border-radius: 12px; padding: 14px 16px; }
+.feedback-box.correct { background: rgba(16,185,129,0.08); border: 1px solid rgba(16,185,129,0.25); }
+.feedback-box.incorrect { background: rgba(239,68,68,0.08); border: 1px solid rgba(239,68,68,0.25); }
+.feedback-box.neutral { background: rgba(245,158,11,0.08); border: 1px solid rgba(245,158,11,0.25); }
+.feedback-title { font-size: 12px; font-weight: 700; margin-bottom: 6px; }
+.feedback-box.correct .feedback-title { color: var(--green); }
+.feedback-box.incorrect .feedback-title { color: var(--red); }
+.feedback-box.neutral .feedback-title { color: var(--gold); }
+.feedback-text { font-size: 12px; color: var(--text); line-height: 1.7; }
+
+/* Stats bar */
+.stats-bar { display: flex; gap: 16px; padding: 10px 16px; background: var(--surface); border-top: 1px solid var(--border); font-size: 11px; color: var(--muted); }
+.stat-item { display: flex; align-items: center; gap: 4px; }
+.stat-val { font-weight: 700; color: var(--text); }
+.stat-val.green { color: var(--green); }
+.stat-val.red { color: var(--red); }
+
+/* Bottom controls */
+.bottom-controls { display: flex; gap: 8px; padding: 12px 16px; border-top: 1px solid var(--border); background: var(--bg); }
+.ctrl-btn { flex: 1; padding: 10px; border-radius: 8px; border: 1px solid var(--border); background: var(--surface2); color: var(--muted); font-size: 12px; font-weight: 600; cursor: pointer; transition: all .15s; }
+.ctrl-btn:hover { border-color: var(--accent); color: var(--accent); }
+.ctrl-btn.primary { border-color: var(--accent); color: var(--accent); background: rgba(34,211,238,0.08); }
+
+/* Loading */
+.loading { display: flex; align-items: center; gap: 8px; font-size: 12px; color: var(--muted); padding: 8px 0; }
+.dot-pulse { display: flex; gap: 3px; }
+.dot-pulse span { width: 5px; height: 5px; border-radius: 50%; background: var(--accent); animation: pulse 1.2s ease-in-out infinite; }
+.dot-pulse span:nth-child(2) { animation-delay: .2s; }
+.dot-pulse span:nth-child(3) { animation-delay: .4s; }
+@keyframes pulse { 0%,80%,100%{opacity:.2;transform:scale(.8)} 40%{opacity:1;transform:scale(1)} }
+
+/* Hand result overlay */
+.result-overlay { background: var(--surface2); border: 1px solid var(--border); border-radius: 14px; padding: 16px; text-align: center; }
+.result-title { font-size: 16px; font-weight: 700; margin-bottom: 6px; }
+.result-title.win { color: var(--green); }
+.result-title.lose { color: var(--red); }
+.result-title.chop { color: var(--gold); }
+.result-sub { font-size: 12px; color: var(--muted); margin-bottom: 14px; line-height: 1.6; }
+.next-btn { padding: 10px 28px; border-radius: 8px; border: none; background: var(--accent); color: #000; font-size: 13px; font-weight: 700; cursor: pointer; }
+
+@media (max-width: 420px) {
+  .action-buttons { grid-template-columns: 1fr 1fr; }
+  .setup-card { padding: 22px; }
+}
+</style>
+</head>
+<body>
+
+<!-- ══════════════════════════════
+     SETUP SCREEN
+══════════════════════════════ -->
+<div id="setup-screen">
+  <div class="setup-card">
+    <div class="setup-title">Poker Trainer</div>
+    <div class="setup-sub">Battle the bot. Get coached. Get better.</div>
+
+    <div class="setup-row">
+      <span class="setup-label">Format</span>
+      <div class="setup-options" id="opt-format">
+        <button class="opt-btn selected" data-val="nlhe-9max">9-Max NLH</button>
+        <button class="opt-btn" data-val="nlhe-6max">6-Max NLH</button>
+        <button class="opt-btn" data-val="pko-8max">8-Max PKO</button>
+        <button class="opt-btn" data-val="hyper-6max">6-Max Hyper</button>
+        <button class="opt-btn" data-val="hyper-pko-6max">6-Max Hyper PKO</button>
+      </div>
+    </div>
+
+    <div class="setup-row">
+      <span class="setup-label">Stack Depth</span>
+      <div class="setup-options" id="opt-depth">
+        <button class="opt-btn selected" data-val="100bb">100BB Deep</button>
+        <button class="opt-btn" data-val="40bb">40BB Mid</button>
+        <button class="opt-btn" data-val="20bb">20BB Short</button>
+        <button class="opt-btn" data-val="10bb">10BB Push/Fold</button>
+        <button class="opt-btn" data-val="random">Random</button>
+      </div>
+    </div>
+
+    <div class="setup-row">
+      <span class="setup-label">Your Position</span>
+      <div class="setup-options" id="opt-position">
+        <button class="opt-btn selected" data-val="random">Random</button>
+        <button class="opt-btn" data-val="UTG">UTG</button>
+        <button class="opt-btn" data-val="UTG+1">UTG+1</button>
+        <button class="opt-btn" data-val="MP">MP</button>
+        <button class="opt-btn" data-val="HJ">HJ</button>
+        <button class="opt-btn" data-val="CO">CO</button>
+        <button class="opt-btn" data-val="BTN">BTN</button>
+        <button class="opt-btn" data-val="SB">SB</button>
+        <button class="opt-btn" data-val="BB">BB</button>
+      </div>
+    </div>
+
+    <div class="setup-row">
+      <span class="setup-label">Scenario Focus</span>
+      <div class="setup-options" id="opt-scenario">
+        <button class="opt-btn selected" data-val="all">All Spots</button>
+        <button class="opt-btn" data-val="preflop-rfi">RFI Decisions</button>
+        <button class="opt-btn" data-val="preflop-3bet">vs 3-Bet</button>
+        <button class="opt-btn" data-val="preflop-squeeze">Squeeze Spots</button>
+        <button class="opt-btn" data-val="postflop">Postflop Play</button>
+        <button class="opt-btn" data-val="pushfold">Push/Fold</button>
+      </div>
+    </div>
+
+    <div class="setup-row">
+      <span class="setup-label">Bot Difficulty</span>
+      <div class="setup-options" id="opt-difficulty">
+        <button class="opt-btn" data-val="learning">Learning</button>
+        <button class="opt-btn selected" data-val="regular">Regular</button>
+        <button class="opt-btn" data-val="grinder">Grinder</button>
+        <button class="opt-btn" data-val="solver">GTO Solver</button>
+      </div>
+    </div>
+
+    <button class="start-btn" onclick="startGame()">Start Training</button>
+  </div>
+</div>
+
+<!-- ══════════════════════════════
+     GAME SCREEN
+══════════════════════════════ -->
+<div id="game-screen">
+
+  <!-- FELT AREA -->
+  <div class="felt-area">
+    <!-- Villain -->
+    <div class="player-bar villain-bar">
+      <div>
+        <div class="player-label">Villain (Bot)</div>
+        <div id="villain-position" class="player-position" style="margin-top:3px">—</div>
+      </div>
+      <div id="villain-cards" class="player-cards"></div>
+      <div class="player-stack" id="villain-stack">—</div>
+    </div>
+
+    <!-- Community cards -->
+    <div class="community-area" id="community-cards"></div>
+    <div class="pot-display" id="pot-display"></div>
+
+    <!-- Hero -->
+    <div class="player-bar hero-bar">
+      <div>
+        <div class="player-label">You (Hero)</div>
+        <div id="hero-position" class="player-position" style="margin-top:3px">—</div>
+      </div>
+      <div id="hero-cards" class="player-cards"></div>
+      <div class="player-stack" id="hero-stack">—</div>
+    </div>
+    <div class="table-rail"></div>
+  </div>
+
+  <!-- STATS -->
+  <div class="stats-bar">
+    <div class="stat-item">Hand <span class="stat-val" id="stat-hand">1</span></div>
+    <div class="stat-item">Correct <span class="stat-val green" id="stat-correct">0</span></div>
+    <div class="stat-item">Total <span class="stat-val" id="stat-total">0</span></div>
+    <div class="stat-item">Accuracy <span class="stat-val" id="stat-pct">—</span></div>
+    <div class="stat-item" style="margin-left:auto">Stack <span class="stat-val" id="stat-stack">100BB</span></div>
+  </div>
+
+  <!-- ACTION AREA -->
+  <div class="action-area" id="action-area">
+    <div class="loading" id="loading-initial">
+      <div class="dot-pulse"><span></span><span></span><span></span></div>
+      <span>Dealing hand...</span>
+    </div>
+  </div>
+
+  <!-- BOTTOM CONTROLS -->
+  <div class="bottom-controls">
+    <button class="ctrl-btn" onclick="showSetup()">⚙ Settings</button>
+    <button class="ctrl-btn primary" onclick="nextHand()" id="next-hand-btn" style="display:none">Next Hand →</button>
+    <button class="ctrl-btn" onclick="showHint()" id="hint-btn">💡 Hint</button>
+  </div>
+</div>
+
+<script>
+// ── STATE ──────────────────────────────────────────────
+const state = {
+  format: 'nlhe-9max', depth: '100bb', position: 'random',
+  scenario: 'all', difficulty: 'regular',
+  handNum: 1, correct: 0, total: 0,
+  heroStack: 100, villainStack: 100,
+  currentHand: null, awaitingAction: false,
+  conversationHistory: []
+};
+
+const SUITS = ['♠','♥','♦','♣'];
+const RANKS = ['2','3','4','5','6','7','8','9','T','J','Q','K','A'];
+const RED_SUITS = ['♥','♦'];
+
+const POSITIONS_9MAX = ['UTG','UTG+1','MP','HJ','CO','BTN','SB','BB'];
+const POSITIONS_6MAX = ['UTG','HJ','CO','BTN','SB','BB'];
+const DEPTH_MAP = { '100bb': 100, '40bb': 40, '20bb': 20, '10bb': 10 };
+
+// ── SETUP ──────────────────────────────────────────────
+document.querySelectorAll('.setup-options').forEach(group => {
+  group.querySelectorAll('.opt-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      group.querySelectorAll('.opt-btn').forEach(b => b.classList.remove('selected'));
+      btn.classList.add('selected');
+      state[group.id.replace('opt-', '')] = btn.dataset.val;
+    });
+  });
+});
+
+function startGame() {
+  document.getElementById('setup-screen').style.display = 'none';
+  document.getElementById('game-screen').style.display = 'flex';
+  state.heroStack = 100; state.villainStack = 100;
+  state.handNum = 1; state.correct = 0; state.total = 0;
+  state.conversationHistory = [];
+  updateStats();
+  dealHand();
+}
+
+function showSetup() {
+  document.getElementById('game-screen').style.display = 'none';
+  document.getElementById('setup-screen').style.display = 'flex';
+}
+
+// ── CARD HELPERS ──────────────────────────────────────
+function randomCard(usedCards) {
+  let card;
+  do { card = RANKS[Math.floor(Math.random()*13)] + SUITS[Math.floor(Math.random()*4)]; }
+  while (usedCards.includes(card));
+  return card;
+}
+
+function renderCard(cardStr, faceDown=false) {
+  if (faceDown) return `<div class="card back"></div>`;
+  const rank = cardStr.slice(0, -1);
+  const suit = cardStr.slice(-1);
+  const isRed = RED_SUITS.includes(suit);
+  return `<div class="card face ${isRed ? 'red-card' : 'black-card'}">
+    <span class="rank">${rank}</span>
+    <span class="suit">${suit}</span>
+  </div>`;
+}
+
+function getDisplayRank(r) { return r === 'T' ? '10' : r; }
+
+function cardToReadable(card) {
+  const rank = card.slice(0, -1);
+  const suit = card.slice(-1);
+  const suitName = {'♠':'s','♥':'h','♦':'d','♣':'c'}[suit];
+  return (rank === 'T' ? '10' : rank) + suitName;
+}
+
+// ── DEAL HAND ──────────────────────────────────────────
+function dealHand() {
+  document.getElementById('next-hand-btn').style.display = 'none';
+  document.getElementById('hint-btn').style.display = 'block';
+  setActionButtons(false);
+
+  const used = [];
+  const h1 = randomCard(used); used.push(h1);
+  const h2 = randomCard(used); used.push(h2);
+  const v1 = randomCard(used); used.push(v1);
+  const v2 = randomCard(used); used.push(v2);
+
+  // Determine position
+  const posOptions = state.format.includes('6max') ? POSITIONS_6MAX : POSITIONS_9MAX;
+  const heroPos = state.position === 'random'
+    ? posOptions[Math.floor(Math.random() * posOptions.length)]
+    : state.position;
+
+  const villainIdx = (posOptions.indexOf(heroPos) + Math.floor(Math.random()*(posOptions.length-1)) + 1) % posOptions.length;
+  const villainPos = posOptions[villainIdx];
+
+  const depthBB = state.depth === 'random'
+    ? [100, 40, 20, 10][Math.floor(Math.random()*4)]
+    : DEPTH_MAP[state.depth];
+
+  state.currentHand = { h1, h2, v1, v2, heroPos, villainPos, depthBB, used, board: [], pot: 0, street: 'preflop' };
+
+  // Render felt
+  document.getElementById('hero-position').textContent = heroPos;
+  document.getElementById('villain-position').textContent = villainPos;
+  document.getElementById('hero-cards').innerHTML = renderCard(h1) + renderCard(h2);
+  document.getElementById('villain-cards').innerHTML = renderCard(null, true) + renderCard(null, true);
+  document.getElementById('hero-stack').textContent = depthBB + 'BB';
+  document.getElementById('villain-stack').textContent = depthBB + 'BB';
+  document.getElementById('community-cards').innerHTML = '';
+  document.getElementById('pot-display').textContent = '';
+  document.getElementById('stat-stack').textContent = depthBB + 'BB';
+
+  // Generate scenario via API
+  const actionArea = document.getElementById('action-area');
+  actionArea.innerHTML = `<div class="loading"><div class="dot-pulse"><span></span><span></span><span></span></div><span>Setting up scenario...</span></div>`;
+
+  generateScenario();
+}
+
+// ── API CALL ──────────────────────────────────────────
+async function callAPI(messages, systemPrompt) {
+  const response = await fetch('https://poker-proxy.rahulkhuteta14.workers.dev', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      model: 'claude-sonnet-4-20250514',
+      max_tokens: 1000,
+      system: systemPrompt,
+      messages
+    })
+  });
+  const data = await response.json();
+  if (data.error) throw new Error(data.error.message);
+  return data.content[0].text;
+}
+
+// ── GENERATE SCENARIO ──────────────────────────────────
+async function generateScenario() {
+  const { h1, h2, heroPos, villainPos, depthBB } = state.currentHand;
+  const hand = `${cardToReadable(h1)}-${cardToReadable(h2)}`;
+  const format = state.format;
+  const scenario = state.scenario;
+  const difficulty = state.difficulty;
+
+  const system = `You are a professional poker coach and opponent for MTT training. You generate realistic poker scenarios and play as the villain.
+
+Always respond in this EXACT JSON format with no other text:
+{
+  "scenario_description": "Brief description of the situation (2-3 sentences, present tense, e.g. 'Action folds to you in the CO...')",
+  "villain_action": "What villain did before hero acts (e.g. 'raised to 2.5BB from UTG', 'is in the BB and yet to act', 'three-bet to 7.5BB')",
+  "hero_options": ["fold", "call", "raise"] or ["fold", "call"] or ["check", "bet"] etc — the valid actions available,
+  "correct_action": "fold" or "call" or "raise" or "check" or "bet" or "shove",
+  "correct_sizing": "e.g. 2.5BB" or null if fold/call/check,
+  "explanation": "Why the correct action is correct (2-3 sentences, educational, direct)",
+  "villain_cards": "revealed or hidden",
+  "pot_size": number in BB,
+  "street": "preflop"
+}`;
+
+  const userMsg = `Generate a ${scenario === 'all' ? 'random preflop' : scenario} scenario for:
+- Format: ${format}
+- Hero hand: ${hand}
+- Hero position: ${heroPos}
+- Villain position: ${villainPos}  
+- Stack depth: ${depthBB}BB effective
+- Bot difficulty: ${difficulty}
+
+Make it realistic and educational. The scenario should test a genuine decision point.`;
+
+  try {
+    const raw = await callAPI([{ role: 'user', content: userMsg }], system);
+    const clean = raw.replace(/```json|```/g, '').trim();
+    const data = JSON.parse(clean);
+    state.currentHand.scenario = data;
+    state.currentHand.pot = data.pot_size;
+    state.conversationHistory = [{ role: 'user', content: userMsg }, { role: 'assistant', content: raw }];
+    renderScenario(data);
+  } catch(e) {
+    document.getElementById('action-area').innerHTML = `<div style="color:var(--red);font-size:12px;padding:8px">Error generating scenario. Please try again.</div>
+    <button class="ctrl-btn" onclick="dealHand()" style="margin-top:8px">Retry</button>`;
+  }
+}
+
+// ── RENDER SCENARIO ────────────────────────────────────
+function renderScenario(data) {
+  if (data.pot_size > 0) {
+    document.getElementById('pot-display').textContent = `Pot: ${data.pot_size}BB`;
+  }
+
+  const options = data.hero_options || ['fold', 'call', 'raise'];
+  const hasRaise = options.includes('raise') || options.includes('bet') || options.includes('shove');
+
+  let sizingHtml = '';
+  if (hasRaise) {
+    sizingHtml = `
+    <div class="raise-row" id="sizing-row" style="display:none">
+      <span style="font-size:11px;color:var(--muted)">Size:</span>
+      ${['2BB','2.5BB','3BB','4BB','Shove'].map(s => `<button class="size-btn" onclick="selectSize('${s}')">${s}</button>`).join('')}
+      <input class="raise-input" id="custom-size" placeholder="Custom BB" type="number" min="1" step="0.5">
+    </div>`;
+  }
+
+  const btnHtml = options.map(action => {
+    let label = '';
+    if (action === 'raise' || action === 'bet') label = `<div class="action-btn-label">pick size above</div>`;
+    return `<button class="action-btn ${action}" onclick="heroAction('${action}')" id="btn-${action}">${action.toUpperCase()}${label}</button>`;
+  }).join('');
+
+  document.getElementById('action-area').innerHTML = `
+    <div class="situation-panel">
+      <div class="situation-title">The Situation</div>
+      <div class="situation-text">${data.scenario_description}<br><br><strong style="color:var(--muted)">Villain:</strong> ${data.villain_action}</div>
+    </div>
+    ${sizingHtml}
+    <div class="action-buttons" id="action-buttons">${btnHtml}</div>
+    <div id="response-area"></div>
+  `;
+
+  state.awaitingAction = true;
+
+  // Show sizing when raise/bet clicked
+  if (hasRaise) {
+    ['raise','bet','shove'].forEach(a => {
+      const btn = document.getElementById('btn-' + a);
+      if (btn) btn.addEventListener('mouseenter', () => {
+        const row = document.getElementById('sizing-row');
+        if (row) row.style.display = 'flex';
+      });
+    });
+  }
+}
+
+function selectSize(s) {
+  document.querySelectorAll('.size-btn').forEach(b => b.classList.remove('selected'));
+  event.target.classList.add('selected');
+  state.currentHand.selectedSize = s;
+}
+
+// ── HERO ACTION ────────────────────────────────────────
+async function heroAction(action) {
+  if (!state.awaitingAction) return;
+  state.awaitingAction = false;
+  setActionButtons(true);
+
+  const { scenario } = state.currentHand;
+  const isCorrect = action.toLowerCase() === scenario.correct_action.toLowerCase();
+
+  // Show immediate feedback
+  const responseArea = document.getElementById('response-area');
+  responseArea.innerHTML = `<div class="loading"><div class="dot-pulse"><span></span><span></span><span></span></div><span>Bot is responding...</span></div>`;
+
+  // Get bot response and coaching
+  try {
+    const botResponse = await getBotResponse(action, isCorrect);
+    renderResponse(action, isCorrect, botResponse, scenario);
+  } catch(e) {
+    renderResponse(action, isCorrect, null, scenario);
+  }
+
+  state.total++;
+  if (isCorrect) state.correct++;
+  updateStats();
+
+  document.getElementById('next-hand-btn').style.display = 'block';
+  document.getElementById('hint-btn').style.display = 'none';
+}
+
+async function getBotResponse(heroAction, isCorrect) {
+  const { scenario, heroPos, villainPos, h1, h2, depthBB } = state.currentHand;
+  const hand = `${cardToReadable(h1)}-${cardToReadable(h2)}`;
+
+  const system = `You are a professional poker coach. Give a brief, direct response to the player's action.
+Respond in JSON:
+{
+  "villain_response": "What the villain does in response (e.g. 'folds', 'calls', '4-bets to 22BB')",
+  "coaching": "1-2 sentences of sharp coaching. If correct, reinforce WHY. If wrong, explain the mistake clearly without being harsh.",
+  "hand_result": "win" or "lose" or "fold" or "continue",
+  "pot_result": number or null
+}`;
+
+  const history = [...state.conversationHistory, {
+    role: 'user',
+    content: `Hero (${heroPos}, ${hand}, ${depthBB}BB) chose to ${heroAction}. The correct action was ${scenario.correct_action}. Villain was ${villainPos}. Respond as the villain and give coaching.`
+  }];
+
+  const raw = await callAPI(history, system);
+  const clean = raw.replace(/```json|```/g, '').trim();
+  return JSON.parse(clean);
+}
+
+function renderResponse(action, isCorrect, botData, scenario) {
+  const responseArea = document.getElementById('response-area');
+
+  const villainResponse = botData?.villain_response || (isCorrect ? 'folds' : 'continues');
+  const coaching = botData?.coaching || scenario.explanation;
+
+  const actionColors = { fold:'badge-fold', call:'badge-call', raise:'badge-raise', check:'badge-check', bet:'badge-bet', shove:'badge-allin', 'all-in':'badge-allin' };
+  const badgeClass = actionColors[villainResponse.split(' ')[0].toLowerCase()] || 'badge-call';
+
+  responseArea.innerHTML = `
+    <div class="bot-response">
+      <div class="bot-response-header">
+        <span style="font-size:11px;font-weight:700;color:var(--purple)">VILLAIN</span>
+        <span class="bot-action-badge ${badgeClass}">${villainResponse}</span>
+      </div>
+      <div class="bot-reasoning">${coaching}</div>
+    </div>
+    <div class="feedback-box ${isCorrect ? 'correct' : 'incorrect'}">
+      <div class="feedback-title">${isCorrect ? '✓ Correct play' : '✗ Suboptimal play'}</div>
+      <div class="feedback-text">
+        ${isCorrect
+          ? scenario.explanation
+          : `<strong>Best action: ${scenario.correct_action.toUpperCase()}${scenario.correct_sizing ? ' ' + scenario.correct_sizing : ''}</strong><br>${scenario.explanation}`
+        }
+      </div>
+    </div>
+  `;
+
+  // Scroll to response
+  setTimeout(() => responseArea.scrollIntoView({ behavior: 'smooth', block: 'nearest' }), 100);
+}
+
+// ── HINT ──────────────────────────────────────────────
+async function showHint() {
+  if (!state.currentHand?.scenario) return;
+  document.getElementById('hint-btn').disabled = true;
+
+  const hintArea = document.createElement('div');
+  hintArea.className = 'feedback-box neutral';
+  hintArea.innerHTML = `<div class="feedback-title">💡 Hint</div><div class="loading"><div class="dot-pulse"><span></span><span></span><span></span></div></div>`;
+  document.getElementById('action-area').appendChild(hintArea);
+
+  try {
+    const { h1, h2, heroPos, villainPos, depthBB, scenario } = state.currentHand;
+    const hand = `${cardToReadable(h1)}-${cardToReadable(h2)}`;
+    const system = `You are a poker coach. Give a hint WITHOUT revealing the answer. One sentence, guiding the player toward the right reasoning.`;
+    const hint = await callAPI([{ role:'user', content:`Hint for: ${hand} in ${heroPos} vs ${villainPos} action, ${depthBB}BB deep. Scenario: ${scenario.scenario_description} ${scenario.villain_action}. Guide without revealing the answer.` }], system);
+    hintArea.innerHTML = `<div class="feedback-title">💡 Hint</div><div class="feedback-text">${hint}</div>`;
+  } catch(e) {
+    hintArea.innerHTML = `<div class="feedback-title">💡 Hint</div><div class="feedback-text">Consider your position, stack depth, and the villain's range when deciding.</div>`;
+  }
+}
+
+// ── NEXT HAND ──────────────────────────────────────────
+function nextHand() {
+  state.handNum++;
+  document.getElementById('stat-hand').textContent = state.handNum;
+  dealHand();
+}
+
+// ── UTILS ──────────────────────────────────────────────
+function setActionButtons(disabled) {
+  document.querySelectorAll('.action-btn').forEach(b => b.disabled = disabled);
+}
+
+function updateStats() {
+  document.getElementById('stat-correct').textContent = state.correct;
+  document.getElementById('stat-total').textContent = state.total;
+  const pct = state.total > 0 ? Math.round((state.correct / state.total) * 100) : '—';
+  const pctEl = document.getElementById('stat-pct');
+  pctEl.textContent = state.total > 0 ? pct + '%' : '—';
+  if (state.total > 0) {
+    pctEl.className = 'stat-val ' + (pct >= 70 ? 'green' : pct >= 50 ? '' : 'red');
+  }
+}
+</script>
+</body>
+</html>
